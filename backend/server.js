@@ -4,10 +4,23 @@ const dotenv = require("dotenv");
 const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
+const http = require("http");
+const { Server } = require("socket.io");
 
 dotenv.config();
 
 const app = express();
+const server = http.createServer(app);
+
+// socket io setup
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+  },
+});
+
+// import socket logic
+require("./sockets/socket")(io);
 
 // middleware
 app.use(cors());
@@ -27,10 +40,10 @@ mongoose
     console.log("✅ MongoDB Connected");
 
     const PORT = process.env.PORT || 5000;
-    app.listen(PORT, () => {
+    server.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
     });
   })
   .catch((err) => {
-    console.log("❌ DB Connection Error:", err.message);
+    console.log("MongoDB Error:", err);
   });

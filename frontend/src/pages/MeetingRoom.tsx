@@ -5,7 +5,8 @@ import { io } from "socket.io-client";
 export default function MeetingRoom() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const roomId = searchParams.get("id");
+
+  const roomId = searchParams.get("id") || "";
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const socket = useRef<any>(null);
@@ -19,19 +20,52 @@ export default function MeetingRoom() {
   const [messages, setMessages] = useState([
     { sender: "System", text: "Welcome to meeting" },
   ]);
+
   const [input, setInput] = useState("");
 
-  const [peers, setPeers] = useState<any[]>([]); // future WebRTC users
+  const [peers, setPeers] = useState<any[]>([]);
 
   // ---------------- SOCKET ----------------
   useEffect(() => {
-    socket.current = io("http://localhost:5000"); // backend later
-    socket.current.emit("join-room", roomId);
+    socket.current = io("http://localhost:5000");
 
-    return () => socket.current.disconnect();
+    socket.current.on("connect", () => {
+      console.log("Socket connected:", socket.current.id);
+
+      socket.current.emit("join-room", roomId);
+    });
+
+    // RECEIVE MESSAGE
+    socket.current.on("receive-message", (data: any) => {
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: data.sender,
+          text: data.message,
+        },
+      ]);
+    });
+
+    socket.current.on("user-connected", (id: string) => {
+      setMessages((prev) => [
+        ...prev,
+        { sender: "System", text: `User joined: ${id}` },
+      ]);
+    });
+
+    socket.current.on("user-disconnected", (id: string) => {
+      setMessages((prev) => [
+        ...prev,
+        { sender: "System", text: `User left: ${id}` },
+      ]);
+    });
+
+    return () => {
+      socket.current.disconnect();
+    };
   }, [roomId]);
 
-  // camera with webrtc
+  // ---------------- CAMERA ----------------
   useEffect(() => {
     const startCamera = async () => {
       try {
@@ -59,15 +93,28 @@ export default function MeetingRoom() {
     }
   }, [stream]);
 
-  // chat section
+  // ---------------- CHAT SEND (FIXED PROPERLY) ----------------
   const sendMessage = () => {
     if (!input.trim()) return;
-    setMessages((p) => [...p, { sender: "You", text: input }]);
+
+    const msg = input;
+
+    // ✔ SHOW IN UI INSTANTLY
+    setMessages((prev) => [
+      ...prev,
+      { sender: "You", text: msg },
+    ]);
+
+    // ✔ SEND TO SERVER
+    socket.current.emit("send-message", {
+      roomId,
+      message: msg,
+    });
+
     setInput("");
   };
 
-  // Controls: like camera , mic,share screen and also leaving
-
+  // ---------------- CONTROLS (UNCHANGED) ----------------
   const toggleMute = () => {
     if (!stream) return;
     stream.getAudioTracks().forEach((t) => (t.enabled = !t.enabled));
@@ -123,33 +170,34 @@ export default function MeetingRoom() {
     navigate("/dashboard");
   };
 
-  // UI system 
-
+  // ---------------- UI (UNCHANGED) ----------------
   return (
-    <div style={{
-      height: "100vh",
-      display: "flex",
-      flexDirection: "column",
-      background: "#0f172a",
-      color: "white"
-    }}>
-
-      {/* HEADER */}
-      <div style={{
-        padding: "10px",
-        borderBottom: "1px solid gray",
+    <div
+      style={{
+        height: "100vh",
         display: "flex",
-        justifyContent: "space-between"
-      }}>
+        flexDirection: "column",
+        background: "#0f172a",
+        color: "white",
+      }}
+    >
+      {/* HEADER */}
+      <div
+        style={{
+          padding: "10px",
+          borderBottom: "1px solid gray",
+          display: "flex",
+          justifyContent: "space-between",
+        }}
+      >
         <h3>Meeting Room</h3>
         <span>Room: {roomId}</span>
       </div>
 
       {/* MAIN */}
       <div style={{ flex: 1, display: "flex" }}>
-
-        {/* VIDEO AREA */}
-        <div style={{ flex: 3, position: "relative" }}>
+        {/* VIDEO */}
+        <div style={{ flex: 3 }}>
           <video
             ref={videoRef}
             autoPlay
@@ -157,18 +205,20 @@ export default function MeetingRoom() {
             style={{
               width: "100%",
               height: "100%",
-              objectFit: "cover"
+              objectFit: "cover",
             }}
           />
         </div>
 
         {/* CHAT */}
-        <div style={{
-          width: "300px",
-          borderLeft: "1px solid gray",
-          display: "flex",
-          flexDirection: "column"
-        }}>
+        <div
+          style={{
+            width: "300px",
+            borderLeft: "1px solid gray",
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
           <div style={{ flex: 1, padding: "10px" }}>
             {messages.map((m, i) => (
               <p key={i}>
@@ -187,18 +237,18 @@ export default function MeetingRoom() {
             <button onClick={sendMessage}>Send</button>
           </div>
         </div>
-
       </div>
 
-      {/* CONTROLS (RESTORED) */}
-      <div style={{
-        padding: "10px",
-        borderTop: "1px solid gray",
-        display: "flex",
-        justifyContent: "center",
-        gap: "10px"
-      }}>
-
+      {/* CONTROLS */}
+      <div
+        style={{
+          padding: "10px",
+          borderTop: "1px solid gray",
+          display: "flex",
+          justifyContent: "center",
+          gap: "10px",
+        }}
+      >
         <button onClick={toggleMute}>
           {isMuted ? "Unmute" : "Mute"}
         </button>
@@ -211,12 +261,13 @@ export default function MeetingRoom() {
           {isSharing ? "Stop Share" : "Share Screen"}
         </button>
 
-        <button onClick={leaveMeeting} style={{ background: "red", color: "white" }}>
+        <button
+          onClick={leaveMeeting}
+          style={{ background: "red", color: "white" }}
+        >
           Leave
         </button>
-
       </div>
-
     </div>
   );
 }
