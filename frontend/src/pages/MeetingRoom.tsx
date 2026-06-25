@@ -11,11 +11,10 @@ export default function MeetingRoom() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const socket = useRef<any>(null);
 
-  const [stream, setStream] = useState<MediaStream | null>(null);
+  const peersRef = useRef<Map<string, RTCPeerConnection>>(new Map());
+  const [remoteStreams, setRemoteStreams] = useState<Map<string, MediaStream>>(new Map());
 
-  const [isMuted, setIsMuted] = useState(false);
-  const [isCameraOn, setIsCameraOn] = useState(true);
-  const [isSharing, setIsSharing] = useState(false);
+  const [stream, setStream] = useState<MediaStream | null>(null);
 
   const [messages, setMessages] = useState([
     { sender: "System", text: "Welcome to meeting" },
@@ -23,26 +22,22 @@ export default function MeetingRoom() {
 
   const [input, setInput] = useState("");
 
-  const [peers, setPeers] = useState<any[]>([]);
+  const servers = {
+    iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+  };
 
-  // ---------------- SOCKET ----------------
+  // SOCKET
   useEffect(() => {
     socket.current = io("http://localhost:5000");
 
     socket.current.on("connect", () => {
-      console.log("Socket connected:", socket.current.id);
-
       socket.current.emit("join-room", roomId);
     });
 
-    // RECEIVE MESSAGE
     socket.current.on("receive-message", (data: any) => {
       setMessages((prev) => [
         ...prev,
-        {
-          sender: data.sender,
-          text: data.message,
-        },
+        { sender: data.sender, text: data.message },
       ]);
     });
 
@@ -60,214 +55,117 @@ export default function MeetingRoom() {
       ]);
     });
 
-    return () => {
-      socket.current.disconnect();
-    };
-  }, [roomId]);
+    socket.current.on("offer", async ({ offer, from }) => {
+      const peer = new RTCPeerConnection(servers);
+      peersRef.current.set(from, peer);
 
-  // ---------------- CAMERA ----------------
-  useEffect(() => {
-    const startCamera = async () => {
-      try {
-        const s = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: true,
+      stream?.getTracks().forEach((t) => peer.addTrack(t, stream));
+
+      peer.ontrack = (e) => {
+        setRemoteStreams((prev) => {
+          const updated = new Map(prev);
+          updated.set(from, e.streams[0]);
+          return updated;
         });
+      };
 
-        setStream(s);
+      await peer.setRemoteDescription(offer);
 
-        if (videoRef.current) {
-          videoRef.current.srcObject = s;
-        }
-      } catch (err) {
-        console.log("Camera error:", err);
-      }
-    };
+      const answer = await peer.createAnswer();
+      await peer.setLocalDescription(answer);
 
-    startCamera();
-  }, []);
-
-  useEffect(() => {
-    if (videoRef.current && stream) {
-      videoRef.current.srcObject = stream;
-    }
-  }, [stream]);
-
-  // ---------------- CHAT SEND (FIXED PROPERLY) ----------------
-  const sendMessage = () => {
-    if (!input.trim()) return;
-
-    const msg = input;
-
-    // ✔ SHOW IN UI INSTANTLY
-    setMessages((prev) => [
-      ...prev,
-      { sender: "You", text: msg },
-    ]);
-
-    // ✔ SEND TO SERVER
-    socket.current.emit("send-message", {
-      roomId,
-      message: msg,
+      socket.current.emit("answer", { answer, to: from });
     });
 
-    setInput("");
-  };
+    socket.current.on("answer", async ({ answer, from }) => {
+      const peer = peersRef.current.get(from);
+      if (peer) await peer.setRemoteDescription(answer);
+    });
 
-  // ---------------- CONTROLS (UNCHANGED) ----------------
-  const toggleMute = () => {
-    if (!stream) return;
-    stream.getAudioTracks().forEach((t) => (t.enabled = !t.enabled));
-    setIsMuted((p) => !p);
-  };
+    socket.current.on("ice-candidate", async ({ candidate, from }) => {
+      const peer = peersRef.current.get(from);
+      if (peer && candidate) await peer.addIceCandidate(candidate);
+    });
 
-  const toggleCamera = () => {
-    if (!stream) return;
-    stream.getVideoTracks().forEach((t) => (t.enabled = !t.enabled));
-    setIsCameraOn((p) => !p);
-  };
+    return () => socket.current.disconnect();
+  }, [roomId, stream]);
 
-  const startShare = async () => {
-    try {
-      const screen = await navigator.mediaDevices.getDisplayMedia({
-        video: true,
-      });
-
-      setStream(screen);
-      setIsSharing(true);
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = screen;
-      }
-
-      screen.getVideoTracks()[0].onended = stopShare;
-    } catch (err) {
-      console.log(err);
-    }
-  };
-
-  const stopShare = async () => {
-    try {
-      const cam = await navigator.mediaDevices.getUserMedia({
+  // CAMERA
+  useEffect(() => {
+    const start = async () => {
+      const s = await navigator.mediaDevices.getUserMedia({
         video: true,
         audio: true,
       });
 
-      setStream(cam);
-      setIsSharing(false);
+      setStream(s);
 
       if (videoRef.current) {
-        videoRef.current.srcObject = cam;
+        videoRef.current.srcObject = s;
       }
-    } catch (err) {
-      console.log(err);
-    }
+    };
+
+    start();
+  }, []);
+
+  // SEND CHAT
+  const sendMessage = () => {
+    if (!input.trim()) return;
+
+    socket.current.emit("send-message", {
+      roomId,
+      message: input,
+    });
+
+    setMessages((p) => [...p, { sender: "You", text: input }]);
+
+    setInput("");
   };
 
+  // LEAVE
   const leaveMeeting = () => {
     stream?.getTracks().forEach((t) => t.stop());
-    socket.current?.disconnect();
+
+    socket.current.emit("leave-room", roomId);
+
+    peersRef.current.forEach((p) => p.close());
+    peersRef.current.clear();
+
     navigate("/dashboard");
   };
 
-  // ---------------- UI (UNCHANGED) ----------------
   return (
-    <div
-      style={{
-        height: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        background: "#0f172a",
-        color: "white",
-      }}
-    >
-      {/* HEADER */}
-      <div
-        style={{
-          padding: "10px",
-          borderBottom: "1px solid gray",
-          display: "flex",
-          justifyContent: "space-between",
-        }}
-      >
-        <h3>Meeting Room</h3>
-        <span>Room: {roomId}</span>
-      </div>
+    <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
+      <div style={{ padding: 10 }}>Room: {roomId}</div>
 
-      {/* MAIN */}
-      <div style={{ flex: 1, display: "flex" }}>
-        {/* VIDEO */}
-        <div style={{ flex: 3 }}>
+      <div style={{ display: "flex", flex: 1 }}>
+        <video ref={videoRef} autoPlay playsInline style={{ width: "50%" }} />
+
+        {[...remoteStreams.entries()].map(([id, s]) => (
           <video
-            ref={videoRef}
+            key={id}
             autoPlay
             playsInline
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
+            ref={(el) => {
+              if (el) el.srcObject = s;
             }}
+            style={{ width: "50%" }}
           />
-        </div>
+        ))}
 
-        {/* CHAT */}
-        <div
-          style={{
-            width: "300px",
-            borderLeft: "1px solid gray",
-            display: "flex",
-            flexDirection: "column",
-          }}
-        >
-          <div style={{ flex: 1, padding: "10px" }}>
-            {messages.map((m, i) => (
-              <p key={i}>
-                <b>{m.sender}:</b> {m.text}
-              </p>
-            ))}
-          </div>
+        <div style={{ width: 300 }}>
+          {messages.map((m, i) => (
+            <p key={i}>
+              <b>{m.sender}</b>: {m.text}
+            </p>
+          ))}
 
-          <div style={{ display: "flex", padding: "10px" }}>
-            <input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="message..."
-              style={{ flex: 1 }}
-            />
-            <button onClick={sendMessage}>Send</button>
-          </div>
+          <input value={input} onChange={(e) => setInput(e.target.value)} />
+          <button onClick={sendMessage}>Send</button>
         </div>
       </div>
 
-      {/* CONTROLS */}
-      <div
-        style={{
-          padding: "10px",
-          borderTop: "1px solid gray",
-          display: "flex",
-          justifyContent: "center",
-          gap: "10px",
-        }}
-      >
-        <button onClick={toggleMute}>
-          {isMuted ? "Unmute" : "Mute"}
-        </button>
-
-        <button onClick={toggleCamera}>
-          {isCameraOn ? "Camera Off" : "Camera On"}
-        </button>
-
-        <button onClick={isSharing ? stopShare : startShare}>
-          {isSharing ? "Stop Share" : "Share Screen"}
-        </button>
-
-        <button
-          onClick={leaveMeeting}
-          style={{ background: "red", color: "white" }}
-        >
-          Leave
-        </button>
-      </div>
+      <button onClick={leaveMeeting}>Leave</button>
     </div>
   );
 }

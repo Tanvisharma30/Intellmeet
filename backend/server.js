@@ -12,28 +12,38 @@ dotenv.config();
 const app = express();
 const server = http.createServer(app);
 
-// socket io setup
+// ---------------- SOCKET SETUP ----------------
 const io = new Server(server, {
   cors: {
     origin: "*",
   },
 });
 
-// import socket logic
+// socket logic
 require("./sockets/socket")(io);
 
-// middleware
+// ---------------- MIDDLEWARE ----------------
 app.use(cors());
 app.use(express.json());
 app.use(helmet());
 app.use(morgan("dev"));
 
-// test route
+// ---------------- ROUTES ----------------
+
+// AUTH ROUTES
+const authRoutes = require("./routes/authRoutes");
+app.use("/api/auth", authRoutes);
+
+// MEETING ROUTES
+const meetingRoutes = require("./routes/meetingRoutes");
+app.use("/api/meetings", meetingRoutes);
+
+// ---------------- TEST ROUTE ----------------
 app.get("/", (req, res) => {
   res.send("🚀 IntellMeet Backend is Running");
 });
 
-// connect DB
+// ---------------- DATABASE CONNECTION ----------------
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => {
