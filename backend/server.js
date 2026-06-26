@@ -36,7 +36,14 @@ app.use("/api/auth", authRoutes);
 
 // MEETING ROUTES
 const meetingRoutes = require("./routes/meetingRoutes");
-app.use("/api/meetings", meetingRoutes);
+app.use("/api/meetings", meetingRoutes); 
+
+// AI ROUTES (NEW - WEEK 3)
+const aiRoutes = require("./routes/aiTranscribe");
+const summaryRoutes = require("./routes/summary");
+
+app.use("/api/ai", aiRoutes);
+app.use("/api/ai", summaryRoutes);
 
 // ---------------- TEST ROUTE ----------------
 app.get("/", (req, res) => {
