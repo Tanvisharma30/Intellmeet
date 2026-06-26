@@ -1,11 +1,21 @@
+import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 
 export default function Login() {
   const navigate = useNavigate();
 
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
   const handleLogin = () => {
-    localStorage.setItem("token", "demo-token");
-    navigate("/dashboard");
+    setLoading(true);
+
+    setTimeout(() => {
+      localStorage.setItem("token", "demo-token");
+      setLoading(false);
+      navigate("/dashboard");
+    }, 800);
   };
 
   return (
@@ -32,11 +42,13 @@ export default function Login() {
       >
         {/* TITLE */}
         <h2 style={{ textAlign: "center", marginBottom: "20px" }}>
-            Welcome Back
+          Welcome Back
         </h2>
 
-        {/* INPUTS */}
+        {/* EMAIL */}
         <input
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
           placeholder="Email"
           style={{
             width: "100%",
@@ -50,7 +62,10 @@ export default function Login() {
           }}
         />
 
+        {/* PASSWORD */}
         <input
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
           type="password"
           placeholder="Password"
           style={{
@@ -68,18 +83,19 @@ export default function Login() {
         {/* BUTTON */}
         <button
           onClick={handleLogin}
+          disabled={loading}
           style={{
             width: "100%",
             padding: "10px",
             borderRadius: "8px",
             border: "none",
-            background: "#7c3aed",
+            background: loading ? "#4c1d95" : "#7c3aed",
             color: "white",
             fontWeight: "bold",
             cursor: "pointer",
           }}
         >
-          Login
+          {loading ? "Logging in..." : "Login"}
         </button>
 
         {/* FOOTER */}

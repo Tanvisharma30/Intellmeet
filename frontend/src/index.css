@@ -16,4 +16,5 @@ button {
 
 input {
   outline: none;
-}
+} 
+@import "tailwindcss";

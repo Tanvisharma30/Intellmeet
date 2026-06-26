@@ -1,11 +1,21 @@
+import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 
 export default function Register() {
   const navigate = useNavigate();
 
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
   const handleRegister = () => {
-    localStorage.setItem("token", "demo-token");
-    navigate("/dashboard");
+    setLoading(true);
+
+    setTimeout(() => {
+      localStorage.setItem("token", "demo-token");
+      setLoading(false);
+      navigate("/dashboard");
+    }, 800);
   };
 
   return (
@@ -32,25 +42,13 @@ export default function Register() {
       >
         {/* TITLE */}
         <h2 style={{ textAlign: "center", marginBottom: "20px" }}>
-            Create Account
+          Create Account
         </h2>
 
-        {/* INPUTS */}
+        {/* EMAIL */}
         <input
-          placeholder="Name"
-          style={{
-            width: "100%",
-            padding: "10px",
-            marginBottom: "12px",
-            borderRadius: "8px",
-            border: "1px solid #374151",
-            background: "#111827",
-            color: "white",
-            outline: "none",
-          }}
-        />
-
-        <input
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
           placeholder="Email"
           style={{
             width: "100%",
@@ -64,7 +62,10 @@ export default function Register() {
           }}
         />
 
+        {/* PASSWORD */}
         <input
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
           type="password"
           placeholder="Password"
           style={{
@@ -82,23 +83,24 @@ export default function Register() {
         {/* BUTTON */}
         <button
           onClick={handleRegister}
+          disabled={loading}
           style={{
             width: "100%",
             padding: "10px",
             borderRadius: "8px",
             border: "none",
-            background: "#7c3aed",
+            background: loading ? "#4c1d95" : "#7c3aed",
             color: "white",
             fontWeight: "bold",
             cursor: "pointer",
           }}
         >
-          Register
+          {loading ? "Creating account..." : "Register"}
         </button>
 
         {/* FOOTER */}
         <p style={{ marginTop: "15px", textAlign: "center" }}>
-          Already have account?{" "}
+          Already have an account?{" "}
           <Link
             to="/"
             style={{ color: "#a78bfa", textDecoration: "none" }}
