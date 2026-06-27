@@ -1,40 +1,33 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { io } from "socket.io-client";
 
 export default function MeetingRoom() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const location = useLocation();
-
   const roomId = searchParams.get("id") || "";
+
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
-  const settings = (location.state as any) || {
-    micOn: true,
-    camOn: true,
-  };
-
-  // Refs
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const socket = useRef<any>(null);
 
+  const streamRef = useRef<MediaStream | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
 
-  const streamRef = useRef<MediaStream | null>(null);
-
-  // State
-  const [stream, setStream] = useState<MediaStream | null>(null);
   const [participants, setParticipants] = useState<string[]>([]);
   const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState("");
-  const [typing, setTyping] = useState<string[]>([]);
 
-  const [isMuted, setIsMuted] = useState(!settings.micOn);
-  const [isCameraOff, setIsCameraOff] = useState(!settings.camOn);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isCameraOff, setIsCameraOff] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+
+  const [transcript, setTranscript] = useState("");
+  const [summary, setSummary] = useState("");
+  const [loadingAI, setLoadingAI] = useState(false);
 
   // ---------------- SOCKET ----------------
   useEffect(() => {
@@ -45,38 +38,26 @@ export default function MeetingRoom() {
     });
 
     socket.current.on("room-users", (users: string[]) => {
-      setParticipants(users);
+      setParticipants([...new Set(users)]);
     });
 
     socket.current.on("receive-message", (data: any) => {
       setMessages((p) => [...p, data]);
     });
 
-    socket.current.on("user-typing", (name: string) => {
-      setTyping((p) => [...new Set([...p, name])]);
-
-      setTimeout(() => {
-        setTyping((p) => p.filter((x) => x !== name));
-      }, 1500);
-    });
-
     return () => socket.current.disconnect();
   }, [roomId]);
 
-  // ---------------- CAMERA INIT (IMPORTANT FIX) ----------------
+  // ---------------- CAMERA ----------------
   useEffect(() => {
     const start = async () => {
-      const s = await navigator.mediaDevices.getUserMedia({
-        video: settings.camOn,
-        audio: settings.micOn,
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true,
       });
 
-      streamRef.current = s;
-      setStream(s);
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = s;
-      }
+      streamRef.current = stream;
+      if (videoRef.current) videoRef.current.srcObject = stream;
     };
 
     start();
@@ -89,7 +70,7 @@ export default function MeetingRoom() {
     socket.current.emit("send-message", {
       roomId,
       message: input,
-      sender: user?.name || "User",
+      sender: user?.name || "You",
     });
 
     setMessages((p) => [...p, { sender: "You", message: input }]);
@@ -98,59 +79,42 @@ export default function MeetingRoom() {
 
   // ---------------- CONTROLS ----------------
   const toggleMute = () => {
-    const s = streamRef.current;
-    if (!s) return;
-
-    s.getAudioTracks().forEach((t) => (t.enabled = !t.enabled));
+    streamRef.current?.getAudioTracks().forEach((t) => (t.enabled = !t.enabled));
     setIsMuted((p) => !p);
   };
 
   const toggleCamera = () => {
-    const s = streamRef.current;
-    if (!s) return;
-
-    s.getVideoTracks().forEach((t) => (t.enabled = !t.enabled));
+    streamRef.current?.getVideoTracks().forEach((t) => (t.enabled = !t.enabled));
     setIsCameraOff((p) => !p);
   };
 
-  // ---------------- SCREEN SHARE ----------------
   const startShare = async () => {
-    const screen = await navigator.mediaDevices.getDisplayMedia({
-      video: true,
-    });
-
+    const screen = await navigator.mediaDevices.getDisplayMedia({ video: true });
     streamRef.current = screen;
-    setStream(screen);
-
     if (videoRef.current) videoRef.current.srcObject = screen;
     setIsSharing(true);
   };
 
   const stopShare = async () => {
     const cam = await navigator.mediaDevices.getUserMedia({
-      video: settings.camOn,
-      audio: settings.micOn,
+      video: true,
+      audio: true,
     });
 
     streamRef.current = cam;
-    setStream(cam);
-
     if (videoRef.current) videoRef.current.srcObject = cam;
     setIsSharing(false);
   };
 
   // ---------------- RECORDING ----------------
   const startRecording = () => {
-    const s = streamRef.current;
-    if (!s) return;
+    if (!streamRef.current) return;
 
-    const rec = new MediaRecorder(s);
+    const rec = new MediaRecorder(streamRef.current);
     mediaRecorderRef.current = rec;
     chunksRef.current = [];
 
-    rec.ondataavailable = (e) => {
-      if (e.data.size > 0) chunksRef.current.push(e.data);
-    };
+    rec.ondataavailable = (e) => chunksRef.current.push(e.data);
 
     rec.onstop = () => {
       const blob = new Blob(chunksRef.current, { type: "video/webm" });
@@ -171,6 +135,47 @@ export default function MeetingRoom() {
     setIsRecording(false);
   };
 
+  // ---------------- AI FIXED ----------------
+  const generateTranscript = async () => {
+    try {
+      setLoadingAI(true);
+
+      const res = await fetch("http://localhost:5000/api/ai/transcribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          audioText: messages.map((m) => m.message).join(" "),
+        }),
+      });
+
+      const data = await res.json();
+      setTranscript(data.transcript || "No transcript generated");
+    } catch (err) {
+      setTranscript("Error generating transcript");
+    } finally {
+      setLoadingAI(false);
+    }
+  };
+
+  const generateSummary = async () => {
+    try {
+      setLoadingAI(true);
+
+      const res = await fetch("http://localhost:5000/api/ai/summary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transcript }),
+      });
+
+      const data = await res.json();
+      setSummary(data.summary || "No summary generated");
+    } catch (err) {
+      setSummary("Error generating summary");
+    } finally {
+      setLoadingAI(false);
+    }
+  };
+
   // ---------------- LEAVE ----------------
   const leaveMeeting = () => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -178,38 +183,35 @@ export default function MeetingRoom() {
     navigate("/dashboard");
   };
 
-  // ---------------- UI ----------------
   return (
     <div style={styles.page}>
-      {/* TOP BAR */}
+
+      {/* TOP */}
       <div style={styles.top}>
-        <div style={{ fontWeight: 600 }}>IntellMeet</div>
-        <div style={{ opacity: 0.6 }}>Room: {roomId}</div>
+        <div>IntellMeet</div>
+        <div>Room: {roomId}</div>
       </div>
 
       {/* BODY */}
       <div style={styles.body}>
+
         {/* VIDEO */}
         <div style={styles.videoArea}>
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            style={styles.video}
-          />
+          <video ref={videoRef} autoPlay playsInline style={styles.video} />
         </div>
 
         {/* SIDE PANEL */}
         <div style={styles.side}>
+
           <div style={styles.card}>
-            <div style={styles.title}>Participants ({participants.length})</div>
+            <div>Participants ({participants.length})</div>
             {participants.map((p) => (
-              <div key={p}>{p}</div>
+              <div key={p}>🟢 {p}</div>
             ))}
           </div>
 
           <div style={styles.card}>
-            <div style={{ height: 220, overflowY: "auto" }}>
+            <div style={styles.chatBox}>
               {messages.map((m, i) => (
                 <div key={i}>
                   <b>{m.sender}</b>: {m.message}
@@ -217,31 +219,37 @@ export default function MeetingRoom() {
               ))}
             </div>
 
-            {typing.length > 0 && (
-              <div style={{ fontSize: 12, opacity: 0.6 }}>
-                {typing.join(", ")} typing...
-              </div>
-            )}
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              style={styles.input}
+              placeholder="Message..."
+            />
 
-            <div style={styles.chatInput}>
-              <input
-                value={input}
-                onChange={(e) => {
-                  setInput(e.target.value);
+            <button onClick={sendMessage} style={styles.btn}>
+              Send
+            </button>
+          </div>
 
-                  socket.current.emit("typing", {
-                    roomId,
-                    name: user?.name || "User",
-                  });
-                }}
-                style={styles.input}
-                placeholder="Message..."
-              />
-              <button onClick={sendMessage} style={styles.send}>
-                Send
-              </button>
+          {/* AI BOX */}
+          <div style={styles.card}>
+            <div>AI Features</div>
+
+            <button onClick={generateTranscript} style={styles.btn}>
+              AI Transcribe
+            </button>
+
+            <button onClick={generateSummary} style={styles.btn}>
+              AI Summary
+            </button>
+
+            <div style={styles.aiBox}>
+              {loadingAI && <p>Processing...</p>}
+              {transcript && <p><b>Transcript:</b> {transcript}</p>}
+              {summary && <p><b>Summary:</b> {summary}</p>}
             </div>
           </div>
+
         </div>
       </div>
 
@@ -270,6 +278,8 @@ export default function MeetingRoom() {
     </div>
   );
 }
+
+/* ---------------- FIXED UI (NO OVERFLOW) ---------------- */
 const styles: any = {
   page: {
     height: "100vh",
@@ -277,14 +287,15 @@ const styles: any = {
     flexDirection: "column",
     background: "#0a0a0a",
     color: "white",
-    fontFamily: "system-ui",
+    overflow: "hidden",
   },
 
   top: {
-    padding: 14,
+    padding: 12,
     display: "flex",
     justifyContent: "space-between",
     borderBottom: "1px solid #1f1f1f",
+    flexShrink: 0,
   },
 
   body: {
@@ -292,6 +303,7 @@ const styles: any = {
     display: "flex",
     gap: 12,
     padding: 12,
+    overflow: "hidden",
   },
 
   videoArea: {
@@ -299,10 +311,12 @@ const styles: any = {
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
+    overflow: "hidden",
   },
 
   video: {
     width: "95%",
+    maxHeight: "75vh",
     borderRadius: 16,
     background: "#111",
   },
@@ -312,6 +326,7 @@ const styles: any = {
     display: "flex",
     flexDirection: "column",
     gap: 12,
+    overflowY: "auto",
   },
 
   card: {
@@ -321,56 +336,51 @@ const styles: any = {
     border: "1px solid #222",
   },
 
-  title: {
-    fontSize: 13,
-    opacity: 0.6,
+  chatBox: {
+    height: 140,
+    overflowY: "auto",
     marginBottom: 8,
   },
 
-  chatInput: {
-    display: "flex",
-    marginTop: 10,
-    gap: 8,
-  },
-
   input: {
-    flex: 1,
-    background: "#000",
-    border: "1px solid #222",
-    color: "white",
+    width: "100%",
     padding: 6,
-    borderRadius: 6,
+    background: "#000",
+    color: "white",
+    border: "1px solid #333",
   },
 
-  send: {
-    background: "#3b82f6",
+  btn: {
+    marginTop: 6,
+    marginRight: 5,
+    padding: "6px 10px",
+    background: "transparent",
+    border: "1px solid #333",
+    color: "white",
+    borderRadius: 6,
+    cursor: "pointer",
+  },
+
+  leave: {
+    padding: "6px 10px",
+    background: "red",
     border: "none",
     color: "white",
-    padding: "6px 10px",
     borderRadius: 6,
+  },
+
+  aiBox: {
+    marginTop: 10,
+    fontSize: 12,
+    opacity: 0.85,
   },
 
   controls: {
     display: "flex",
     justifyContent: "center",
     gap: 10,
-    padding: 12,
+    padding: 10,
     borderTop: "1px solid #1f1f1f",
-  },
-
-  btn: {
-    padding: "8px 12px",
-    borderRadius: 8,
-    background: "transparent",
-    border: "1px solid #333",
-    color: "white",
-  },
-
-  leave: {
-    padding: "8px 12px",
-    borderRadius: 8,
-    background: "#ef4444",
-    border: "none",
-    color: "white",
+    flexShrink: 0,
   },
 };

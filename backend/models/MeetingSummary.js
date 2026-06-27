@@ -1,14 +1,10 @@
 const mongoose = require("mongoose");
 
-const meetingSchema = new mongoose.Schema(
+const meetingSummarySchema = new mongoose.Schema(
   {
     roomId: String,
-    participants: [String],
-
     transcript: String,
     summary: String,
-    actionItems: [String],
-
     createdAt: {
       type: Date,
       default: Date.now,
@@ -17,4 +13,4 @@ const meetingSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model("Meeting", meetingSchema);
+module.exports = mongoose.model("MeetingSummary", meetingSummarySchema);

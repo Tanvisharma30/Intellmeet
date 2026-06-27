@@ -12,14 +12,11 @@ dotenv.config();
 const app = express();
 const server = http.createServer(app);
 
-// ---------------- SOCKET SETUP ----------------
+// ---------------- SOCKET ----------------
 const io = new Server(server, {
-  cors: {
-    origin: "*",
-  },
+  cors: { origin: "*" },
 });
 
-// socket logic
 require("./sockets/socket")(io);
 
 // ---------------- MIDDLEWARE ----------------
@@ -30,27 +27,22 @@ app.use(morgan("dev"));
 
 // ---------------- ROUTES ----------------
 
-// AUTH ROUTES
-const authRoutes = require("./routes/authRoutes");
-app.use("/api/auth", authRoutes);
+// AUTH
+app.use("/api/auth", require("./routes/authRoutes"));
 
-// MEETING ROUTES
-const meetingRoutes = require("./routes/meetingRoutes");
-app.use("/api/meetings", meetingRoutes); 
+// MEETINGS
+app.use("/api/meetings", require("./routes/meetingRoutes"));
 
-// AI ROUTES (NEW - WEEK 3)
-const aiRoutes = require("./routes/aiTranscribe");
-const summaryRoutes = require("./routes/summary");
+// ---------------- WEEK 3 AI ROUTES ----------------
+app.use("/api/ai", require("./routes/aiTranscribe"));
+app.use("/api/ai", require("./routes/summary"));
 
-app.use("/api/ai", aiRoutes);
-app.use("/api/ai", summaryRoutes);
-
-// ---------------- TEST ROUTE ----------------
+// ---------------- HEALTH CHECK ----------------
 app.get("/", (req, res) => {
-  res.send("🚀 IntellMeet Backend is Running");
+  res.send("🚀 IntellMeet Backend Running");
 });
 
-// ---------------- DATABASE CONNECTION ----------------
+// ---------------- DATABASE ----------------
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => {

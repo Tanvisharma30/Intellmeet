@@ -1,6 +1,6 @@
-const rooms = {};
-
 module.exports = (io) => {
+  const rooms = new Map(); // roomId -> Set(socketIds)
+
   io.on("connection", (socket) => {
     console.log("Connected:", socket.id);
 
@@ -8,13 +8,16 @@ module.exports = (io) => {
     socket.on("join-room", (roomId) => {
       socket.join(roomId);
 
-      if (!rooms[roomId]) rooms[roomId] = new Set();
+      if (!rooms.has(roomId)) {
+        rooms.set(roomId, new Set());
+      }
 
-      rooms[roomId].add(socket.id);
+      rooms.get(roomId).add(socket.id);
 
-      io.to(roomId).emit("room-users", Array.from(rooms[roomId]));
-
-      socket.to(roomId).emit("user-connected", socket.id);
+      io.to(roomId).emit(
+        "room-users",
+        Array.from(rooms.get(roomId))
+      );
     });
 
     // CHAT
@@ -32,11 +35,13 @@ module.exports = (io) => {
 
     // LEAVE
     socket.on("leave-room", (roomId) => {
-      if (rooms[roomId]) {
-        rooms[roomId].delete(socket.id);
+      if (rooms.has(roomId)) {
+        rooms.get(roomId).delete(socket.id);
 
-        io.to(roomId).emit("room-users", Array.from(rooms[roomId]));
-        socket.to(roomId).emit("user-disconnected", socket.id);
+        io.to(roomId).emit(
+          "room-users",
+          Array.from(rooms.get(roomId))
+        );
       }
 
       socket.leave(roomId);
@@ -44,14 +49,16 @@ module.exports = (io) => {
 
     // DISCONNECT
     socket.on("disconnect", () => {
-      for (const roomId in rooms) {
-        if (rooms[roomId].has(socket.id)) {
-          rooms[roomId].delete(socket.id);
+      for (const [roomId, users] of rooms.entries()) {
+        users.delete(socket.id);
 
-          io.to(roomId).emit("room-users", Array.from(rooms[roomId]));
-          socket.to(roomId).emit("user-disconnected", socket.id);
-        }
+        io.to(roomId).emit(
+          "room-users",
+          Array.from(users)
+        );
       }
+
+      console.log("Disconnected:", socket.id);
     });
   });
 };

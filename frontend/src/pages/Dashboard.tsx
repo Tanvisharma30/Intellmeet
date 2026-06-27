@@ -1,12 +1,10 @@
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 export default function Dashboard() {
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    navigate("/");
-  };
+  const [meetings, setMeetings] = useState<any[]>([]);
 
   const createMeeting = () => {
     const roomId = Math.random().toString(36).substring(2, 8);
@@ -15,21 +13,20 @@ export default function Dashboard() {
 
   const joinMeeting = () => {
     const roomId = prompt("Enter Meeting ID");
-    if (roomId && roomId.trim() !== "") {
-      navigate(`/lobby?id=${roomId}`);
-    }
+    if (roomId) navigate(`/lobby?id=${roomId}`);
   };
 
-  const scheduleMeeting = () => {
-    alert("Schedule feature coming soon");
-  };
-
-  const viewRecordings = () => {
-    alert("Recordings feature coming soon");
-  };
+  // ---------------- FETCH HISTORY ----------------
+  useEffect(() => {
+    fetch("http://localhost:5000/api/history/all")
+      .then((res) => res.json())
+      .then((data) => setMeetings(data))
+      .catch((err) => console.log(err));
+  }, []);
 
   return (
     <div style={styles.page}>
+
       {/* SIDEBAR */}
       <div style={styles.sidebar}>
         <div style={styles.logo}>IntellMeet</div>
@@ -41,155 +38,146 @@ export default function Dashboard() {
         <button style={styles.secondaryBtn} onClick={joinMeeting}>
           Join Meeting
         </button>
-
-        <button style={styles.secondaryBtn}>Schedule</button>
-        <button style={styles.secondaryBtn}>Recordings</button>
-
-        <div style={{ marginTop: "auto" }}>
-          <button style={styles.logoutBtn} onClick={handleLogout}>
-            Logout
-          </button>
-        </div>
       </div>
 
       {/* MAIN */}
       <div style={styles.main}>
-        <h1 style={styles.title}>Welcome back</h1>
-        <p style={styles.subtitle}>
-          Start or join meetings instantly
-        </p>
+        <h1 style={styles.title}>Welcome back 👋</h1>
+        <p style={styles.subtitle}>Start or manage meetings</p>
 
+        {/* QUICK ACTIONS */}
         <div style={styles.grid}>
           <div style={styles.card}>
-            <div style={styles.cardTitle}>Start Instant Meeting</div>
-            <div style={styles.cardText}>Create a room and invite others</div>
+            <h3>Instant Meeting</h3>
             <button style={styles.cardBtn} onClick={createMeeting}>
               Start
             </button>
           </div>
 
           <div style={styles.card}>
-            <div style={styles.cardTitle}>Join Meeting</div>
-            <div style={styles.cardText}>Enter a meeting ID</div>
+            <h3>Join Meeting</h3>
             <button style={styles.cardBtn} onClick={joinMeeting}>
               Join
             </button>
           </div>
+        </div>
 
-          <div style={styles.card}>
-            <div style={styles.cardTitle}>Schedule</div>
-            <div style={styles.cardText}>Plan meetings ahead</div>
-            <button style={styles.cardBtn}>
-              View
-            </button>
-          </div>
+        {/* HISTORY */}
+        <div style={styles.history}>
+          <h2>📅 Meeting History</h2>
+
+          {meetings.length === 0 && (
+            <p style={{ opacity: 0.6 }}>No meetings yet</p>
+          )}
+
+          {meetings.map((m) => (
+            <div key={m._id} style={styles.historyCard}>
+              <b>Room:</b> {m.roomId}
+              <div style={styles.summary}>
+                {m.summary?.slice(0, 120)}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>
   );
 }
 
-const styles: Record<string, React.CSSProperties> = {
+/* ---------------- STYLES ---------------- */
+const styles: any = {
   page: {
     height: "100vh",
     display: "flex",
-    background: "radial-gradient(circle at top, #111827, #0f172a)",
+    background: "#0a0a0a",
     color: "white",
-    fontFamily: "system-ui",
+    overflow: "hidden",
   },
 
   sidebar: {
-    width: 260,
+    width: 240,
     padding: 20,
+    borderRight: "1px solid #1f1f1f",
     display: "flex",
     flexDirection: "column",
-    borderRight: "1px solid rgba(255,255,255,0.06)",
-    background: "rgba(255,255,255,0.02)",
-    backdropFilter: "blur(10px)",
+    gap: 10,
   },
 
   logo: {
     fontSize: 18,
-    fontWeight: 600,
-    marginBottom: 30,
+    fontWeight: 700,
+    marginBottom: 20,
   },
 
   main: {
     flex: 1,
-    padding: 40,
+    padding: 30,
+    overflowY: "auto",
   },
 
   title: {
-    fontSize: 28,
-    margin: 0,
+    fontSize: 24,
+    marginBottom: 5,
   },
 
   subtitle: {
     opacity: 0.6,
-    marginTop: 8,
-    marginBottom: 30,
+    marginBottom: 20,
   },
 
   grid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-    gap: 16,
+    display: "flex",
+    gap: 15,
   },
 
   card: {
-    padding: 20,
-    borderRadius: 14,
-    background: "rgba(255,255,255,0.03)",
-    border: "1px solid rgba(255,255,255,0.06)",
-  },
-
-  cardTitle: {
-    fontWeight: 600,
-    marginBottom: 6,
-  },
-
-  cardText: {
-    opacity: 0.6,
-    fontSize: 13,
-    marginBottom: 12,
+    flex: 1,
+    background: "#111",
+    padding: 15,
+    borderRadius: 10,
+    border: "1px solid #222",
   },
 
   cardBtn: {
-    padding: "8px 12px",
-    borderRadius: 8,
-    border: "none",
+    marginTop: 10,
+    padding: "6px 10px",
     background: "#3b82f6",
+    border: "none",
     color: "white",
-    cursor: "pointer",
+    borderRadius: 6,
   },
 
   primaryBtn: {
     padding: 10,
     background: "#3b82f6",
     border: "none",
-    borderRadius: 10,
+    borderRadius: 8,
     color: "white",
-    marginBottom: 10,
-    cursor: "pointer",
   },
 
   secondaryBtn: {
     padding: 10,
     background: "transparent",
-    border: "1px solid rgba(255,255,255,0.1)",
-    borderRadius: 10,
+    border: "1px solid #333",
+    borderRadius: 8,
     color: "white",
-    marginBottom: 10,
-    cursor: "pointer",
   },
 
-  logoutBtn: {
+  history: {
+    marginTop: 30,
+  },
+
+  historyCard: {
+    marginTop: 10,
     padding: 10,
-    background: "#ef4444",
-    border: "none",
-    borderRadius: 10,
-    color: "white",
-    width: "100%",
-    cursor: "pointer",
+    background: "#111",
+    borderRadius: 8,
+    border: "1px solid #222",
+  },
+
+  summary: {
+    fontSize: 12,
+    opacity: 0.7,
+    marginTop: 5,
   },
 };
