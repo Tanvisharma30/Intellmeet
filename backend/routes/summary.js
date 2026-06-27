@@ -10,8 +10,12 @@ router.post("/summary", (req, res) => {
 
   res.json({
     success: true,
-    summary: "This is a generated AI summary (mock)",
-    actionItems: ["Follow up discussion", "Assign tasks"],
+    summary: `Meeting Summary: ${transcript.slice(0, 120)}...`,
+    actionItems: [
+      "Review meeting discussion",
+      "Complete assigned tasks",
+      "Follow up next meeting",
+    ],
   });
 });
 

@@ -10,7 +10,7 @@ router.post("/transcribe", (req, res) => {
 
   res.json({
     success: true,
-    transcript: `Transcribed: ${audioText}`,
+    transcript: `AI Transcript: ${audioText}`,
   });
 });
 

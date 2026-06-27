@@ -12,37 +12,36 @@ dotenv.config();
 const app = express();
 const server = http.createServer(app);
 
-// ---------------- SOCKET ----------------
+// SOCKET
 const io = new Server(server, {
   cors: { origin: "*" },
 });
 
 require("./sockets/socket")(io);
 
-// ---------------- MIDDLEWARE ----------------
+// MIDDLEWARE
 app.use(cors());
 app.use(express.json());
 app.use(helmet());
 app.use(morgan("dev"));
 
-// ---------------- ROUTES ----------------
-
-// AUTH
+// ROUTES
 app.use("/api/auth", require("./routes/authRoutes"));
-
-// MEETINGS
 app.use("/api/meetings", require("./routes/meetingRoutes"));
 
-// ---------------- WEEK 3 AI ROUTES ----------------
+// AI ROUTES (Week 3)
 app.use("/api/ai", require("./routes/aiTranscribe"));
 app.use("/api/ai", require("./routes/summary"));
 
-// ---------------- HEALTH CHECK ----------------
+// HISTORY (IMPORTANT WEEK 3 FEATURE)
+app.use("/api/history", require("./routes/history"));
+
+// HEALTH CHECK
 app.get("/", (req, res) => {
   res.send("🚀 IntellMeet Backend Running");
 });
 
-// ---------------- DATABASE ----------------
+// DB CONNECT
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => {
@@ -53,6 +52,4 @@ mongoose
       console.log(`🚀 Server running on port ${PORT}`);
     });
   })
-  .catch((err) => {
-    console.log("MongoDB Error:", err);
-  });
+  .catch((err) => console.log(err));

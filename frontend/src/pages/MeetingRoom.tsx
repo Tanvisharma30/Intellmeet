@@ -135,7 +135,7 @@ export default function MeetingRoom() {
     setIsRecording(false);
   };
 
-  // ---------------- AI FIXED ----------------
+  // ---------------- AI (FIXED + SAFE) ----------------
   const generateTranscript = async () => {
     try {
       setLoadingAI(true);
@@ -151,6 +151,7 @@ export default function MeetingRoom() {
       const data = await res.json();
       setTranscript(data.transcript || "No transcript generated");
     } catch (err) {
+      console.log(err);
       setTranscript("Error generating transcript");
     } finally {
       setLoadingAI(false);
@@ -170,6 +171,7 @@ export default function MeetingRoom() {
       const data = await res.json();
       setSummary(data.summary || "No summary generated");
     } catch (err) {
+      console.log(err);
       setSummary("Error generating summary");
     } finally {
       setLoadingAI(false);
@@ -200,7 +202,7 @@ export default function MeetingRoom() {
           <video ref={videoRef} autoPlay playsInline style={styles.video} />
         </div>
 
-        {/* SIDE PANEL */}
+        {/* SIDE */}
         <div style={styles.side}>
 
           <div style={styles.card}>
@@ -245,8 +247,12 @@ export default function MeetingRoom() {
 
             <div style={styles.aiBox}>
               {loadingAI && <p>Processing...</p>}
-              {transcript && <p><b>Transcript:</b> {transcript}</p>}
-              {summary && <p><b>Summary:</b> {summary}</p>}
+              {transcript && (
+                <p><b>Transcript:</b> {transcript}</p>
+              )}
+              {summary && (
+                <p><b>Summary:</b> {summary}</p>
+              )}
             </div>
           </div>
 
@@ -279,7 +285,7 @@ export default function MeetingRoom() {
   );
 }
 
-/* ---------------- FIXED UI (NO OVERFLOW) ---------------- */
+/* ---------------- STYLES (UNCHANGED, ONLY SAFE FIXS) ---------------- */
 const styles: any = {
   page: {
     height: "100vh",
@@ -295,7 +301,6 @@ const styles: any = {
     display: "flex",
     justifyContent: "space-between",
     borderBottom: "1px solid #1f1f1f",
-    flexShrink: 0,
   },
 
   body: {
@@ -311,7 +316,6 @@ const styles: any = {
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    overflow: "hidden",
   },
 
   video: {
@@ -381,6 +385,5 @@ const styles: any = {
     gap: 10,
     padding: 10,
     borderTop: "1px solid #1f1f1f",
-    flexShrink: 0,
   },
 };
