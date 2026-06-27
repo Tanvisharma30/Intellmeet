@@ -6,6 +6,9 @@ import Dashboard from "./pages/Dashboard";
 import MeetingLobby from "./pages/MeetingLobby";
 import MeetingRoom from "./pages/MeetingRoom";
 
+// ✅ ADD THIS
+import MeetingHistory from "./pages/MeetingHistory";
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -17,11 +20,14 @@ export default function App() {
 
         <Route path="/dashboard" element={<Dashboard />} />
 
-        {/*  FIXED LOBBY */}
+        {/* FIXED LOBBY */}
         <Route path="/lobby" element={<MeetingLobby />} />
 
-        {/*  MEETING ROOM */}
+        {/* MEETING ROOM */}
         <Route path="/meeting" element={<MeetingRoom />} />
+
+        {/* ✅ HISTORY PAGE ADDED */}
+        <Route path="/history" element={<MeetingHistory />} />
 
       </Routes>
     </BrowserRouter>

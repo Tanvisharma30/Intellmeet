@@ -71,10 +71,19 @@ export default function Dashboard() {
           )}
 
           {meetings.map((m) => (
-            <div key={m._id} style={styles.historyCard}>
+            <div
+              key={m._id}
+              style={styles.historyCard}
+              onClick={() => navigate(`/history?id=${m._id}`)} // ⭐ ADDED
+            >
               <b>Room:</b> {m.roomId}
+
               <div style={styles.summary}>
                 {m.summary?.slice(0, 120)}
+              </div>
+
+              <div style={styles.meta}>
+                {new Date(m.createdAt).toLocaleString()}
               </div>
             </div>
           ))}
@@ -173,11 +182,18 @@ const styles: any = {
     background: "#111",
     borderRadius: 8,
     border: "1px solid #222",
+    cursor: "pointer", // ⭐ ADDED
   },
 
   summary: {
     fontSize: 12,
     opacity: 0.7,
     marginTop: 5,
+  },
+
+  meta: {
+    fontSize: 10,
+    opacity: 0.5,
+    marginTop: 4,
   },
 };

@@ -24,8 +24,12 @@ router.post("/save", async (req, res) => {
 
 // GET ALL HISTORY
 router.get("/all", async (req, res) => {
-  const data = await MeetingHistory.find().sort({ createdAt: -1 });
-  res.json(data);
+  try {
+    const data = await MeetingHistory.find().sort({ createdAt: -1 });
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 module.exports = router;

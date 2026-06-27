@@ -27,6 +27,7 @@ export default function MeetingRoom() {
 
   const [transcript, setTranscript] = useState("");
   const [summary, setSummary] = useState("");
+  const [actionItems, setActionItems] = useState<string[]>([]);
   const [loadingAI, setLoadingAI] = useState(false);
 
   // ---------------- SOCKET ----------------
@@ -135,7 +136,7 @@ export default function MeetingRoom() {
     setIsRecording(false);
   };
 
-  // ---------------- AI (FIXED + SAFE) ----------------
+  // ---------------- AI ----------------
   const generateTranscript = async () => {
     try {
       setLoadingAI(true);
@@ -144,14 +145,13 @@ export default function MeetingRoom() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          audioText: messages.map((m) => m.message).join(" "),
+          text: messages.map((m) => m.message).join(" "),
         }),
       });
 
       const data = await res.json();
       setTranscript(data.transcript || "No transcript generated");
     } catch (err) {
-      console.log(err);
       setTranscript("Error generating transcript");
     } finally {
       setLoadingAI(false);
@@ -169,40 +169,58 @@ export default function MeetingRoom() {
       });
 
       const data = await res.json();
+
       setSummary(data.summary || "No summary generated");
+      setActionItems(data.actionItems || []);
     } catch (err) {
-      console.log(err);
       setSummary("Error generating summary");
     } finally {
       setLoadingAI(false);
     }
   };
 
+  // ---------------- NEW: SAVE MEETING (STEP 4 ADDITION) ----------------
+  const saveMeeting = async () => {
+    try {
+      await fetch("http://localhost:5000/api/history/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          roomId,
+          transcript,
+          summary,
+          actionItems,
+        }),
+      });
+    } catch (err) {
+      console.log("Save failed");
+    }
+  };
+
   // ---------------- LEAVE ----------------
-  const leaveMeeting = () => {
+  const leaveMeeting = async () => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
     socket.current.emit("leave-room", roomId);
+
+    await saveMeeting(); // ⭐ ADDED ONLY
+
     navigate("/dashboard");
   };
 
   return (
     <div style={styles.page}>
 
-      {/* TOP */}
       <div style={styles.top}>
         <div>IntellMeet</div>
         <div>Room: {roomId}</div>
       </div>
 
-      {/* BODY */}
       <div style={styles.body}>
 
-        {/* VIDEO */}
         <div style={styles.videoArea}>
           <video ref={videoRef} autoPlay playsInline style={styles.video} />
         </div>
 
-        {/* SIDE */}
         <div style={styles.side}>
 
           <div style={styles.card}>
@@ -233,7 +251,6 @@ export default function MeetingRoom() {
             </button>
           </div>
 
-          {/* AI BOX */}
           <div style={styles.card}>
             <div>AI Features</div>
 
@@ -247,11 +264,18 @@ export default function MeetingRoom() {
 
             <div style={styles.aiBox}>
               {loadingAI && <p>Processing...</p>}
-              {transcript && (
-                <p><b>Transcript:</b> {transcript}</p>
-              )}
-              {summary && (
-                <p><b>Summary:</b> {summary}</p>
+              {transcript && <p><b>Transcript:</b> {transcript}</p>}
+              {summary && <p><b>Summary:</b> {summary}</p>}
+
+              {actionItems.length > 0 && (
+                <>
+                  <b>Action Items:</b>
+                  <ul>
+                    {actionItems.map((a, i) => (
+                      <li key={i}>{a}</li>
+                    ))}
+                  </ul>
+                </>
               )}
             </div>
           </div>
@@ -259,7 +283,6 @@ export default function MeetingRoom() {
         </div>
       </div>
 
-      {/* CONTROLS */}
       <div style={styles.controls}>
         <button onClick={toggleMute} style={styles.btn}>
           {isMuted ? "Unmute" : "Mute"}
@@ -284,7 +307,6 @@ export default function MeetingRoom() {
     </div>
   );
 }
-
 /* ---------------- STYLES (UNCHANGED, ONLY SAFE FIXS) ---------------- */
 const styles: any = {
   page: {
