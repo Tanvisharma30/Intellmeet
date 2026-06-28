@@ -21,7 +21,7 @@ export default function Dashboard() {
     fetch("http://localhost:5000/api/history/all")
       .then((res) => res.json())
       .then((data) => setMeetings(data))
-      .catch((err) => console.log(err));
+      .catch(console.log);
   }, []);
 
   return (
@@ -74,7 +74,7 @@ export default function Dashboard() {
             <div
               key={m._id}
               style={styles.historyCard}
-              onClick={() => navigate(`/history?id=${m._id}`)} // ⭐ ADDED
+              onClick={() => navigate(`/history?id=${m._id}`)} // ✅ ADDED
             >
               <b>Room:</b> {m.roomId}
 
@@ -182,7 +182,7 @@ const styles: any = {
     background: "#111",
     borderRadius: 8,
     border: "1px solid #222",
-    cursor: "pointer", // ⭐ ADDED
+    cursor: "pointer", // ✅ ADDED
   },
 
   summary: {

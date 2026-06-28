@@ -30,6 +30,10 @@ export default function MeetingRoom() {
   const [actionItems, setActionItems] = useState<string[]>([]);
   const [loadingAI, setLoadingAI] = useState(false);
 
+  // STEP 3 (TASKS)
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [taskInput, setTaskInput] = useState("");
+
   // ---------------- SOCKET ----------------
   useEffect(() => {
     socket.current = io("http://localhost:5000");
@@ -63,6 +67,14 @@ export default function MeetingRoom() {
 
     start();
   }, []);
+
+  // ---------------- TASK FETCH (STEP 3) ----------------
+  useEffect(() => {
+    fetch(`http://localhost:5000/api/tasks?roomId=${roomId}`)
+      .then((res) => res.json())
+      .then(setTasks)
+      .catch(console.log);
+  }, [roomId]);
 
   // ---------------- CHAT ----------------
   const sendMessage = () => {
@@ -107,6 +119,23 @@ export default function MeetingRoom() {
     setIsSharing(false);
   };
 
+  // ---------------- TASK CREATE (STEP 3) ----------------
+  const createTask = async () => {
+    const res = await fetch("http://localhost:5000/api/tasks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        roomId,
+        title: taskInput,
+        status: "todo",
+      }),
+    });
+
+    const data = await res.json();
+    setTasks((p) => [...p, data]);
+    setTaskInput("");
+  };
+
   // ---------------- RECORDING ----------------
   const startRecording = () => {
     if (!streamRef.current) return;
@@ -145,13 +174,13 @@ export default function MeetingRoom() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          text: messages.map((m) => m.message).join(" "),
+          audioText: messages.map((m) => m.message).join(" "),
         }),
       });
 
       const data = await res.json();
       setTranscript(data.transcript || "No transcript generated");
-    } catch (err) {
+    } catch {
       setTranscript("Error generating transcript");
     } finally {
       setLoadingAI(false);
@@ -172,14 +201,14 @@ export default function MeetingRoom() {
 
       setSummary(data.summary || "No summary generated");
       setActionItems(data.actionItems || []);
-    } catch (err) {
+    } catch {
       setSummary("Error generating summary");
     } finally {
       setLoadingAI(false);
     }
   };
 
-  // ---------------- NEW: SAVE MEETING (STEP 4 ADDITION) ----------------
+  // ---------------- STEP 4: SAVE MEETING ----------------
   const saveMeeting = async () => {
     try {
       await fetch("http://localhost:5000/api/history/save", {
@@ -197,26 +226,24 @@ export default function MeetingRoom() {
     }
   };
 
-  // ---------------- LEAVE ----------------
+  // ---------------- LEAVE MEETING (STEP 4) ----------------
   const leaveMeeting = async () => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
     socket.current.emit("leave-room", roomId);
 
-    await saveMeeting(); // ⭐ ADDED ONLY
+    await saveMeeting();
 
     navigate("/dashboard");
   };
 
   return (
     <div style={styles.page}>
-
       <div style={styles.top}>
         <div>IntellMeet</div>
         <div>Room: {roomId}</div>
       </div>
 
       <div style={styles.body}>
-
         <div style={styles.videoArea}>
           <video ref={videoRef} autoPlay playsInline style={styles.video} />
         </div>
@@ -266,7 +293,6 @@ export default function MeetingRoom() {
               {loadingAI && <p>Processing...</p>}
               {transcript && <p><b>Transcript:</b> {transcript}</p>}
               {summary && <p><b>Summary:</b> {summary}</p>}
-
               {actionItems.length > 0 && (
                 <>
                   <b>Action Items:</b>
@@ -277,6 +303,30 @@ export default function MeetingRoom() {
                   </ul>
                 </>
               )}
+            </div>
+          </div>
+
+          {/* TASKS (STEP 3) */}
+          <div style={styles.card}>
+            <div>Tasks</div>
+
+            <input
+              value={taskInput}
+              onChange={(e) => setTaskInput(e.target.value)}
+              placeholder="New task..."
+              style={styles.input}
+            />
+
+            <button onClick={createTask} style={styles.btn}>
+              Add Task
+            </button>
+
+            <div style={{ marginTop: 10 }}>
+              {tasks.map((t) => (
+                <div key={t._id}>
+                  <b>{t.title}</b> - {t.status}
+                </div>
+              ))}
             </div>
           </div>
 
@@ -307,6 +357,7 @@ export default function MeetingRoom() {
     </div>
   );
 }
+
 /* ---------------- STYLES (UNCHANGED, ONLY SAFE FIXS) ---------------- */
 const styles: any = {
   page: {
