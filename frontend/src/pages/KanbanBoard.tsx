@@ -80,7 +80,7 @@ export default function KanbanBoard() {
   // ---------------- UI ----------------
   return (
     <div style={styles.page}>
-      <h2 style={styles.title}>📌 Project Kanban Board</h2>
+      <h2 style={styles.title}>Project Kanban Board</h2>
 
       {/* ADD TASK */}
       <div style={styles.inputRow}>
