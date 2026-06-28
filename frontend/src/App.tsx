@@ -12,19 +12,23 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Authentication */}
         <Route path="/" element={<Login />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 
+        {/* Dashboard */}
         <Route path="/dashboard" element={<Dashboard />} />
 
+        {/* Meeting */}
         <Route path="/lobby" element={<MeetingLobby />} />
-
         <Route path="/meeting" element={<MeetingRoom />} />
 
-        
+        {/* Meeting History */}
+        <Route path="/history" element={<MeetingHistory />} />
 
-        <Route path="/history/:id" element={<MeetingDetails />} />
+        {/* Individual Meeting Details */}
+        <Route path="/history/view" element={<MeetingDetails />} />
       </Routes>
     </BrowserRouter>
   );

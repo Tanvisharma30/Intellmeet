@@ -30,7 +30,7 @@ export default function MeetingRoom() {
   const [actionItems, setActionItems] = useState<string[]>([]);
   const [loadingAI, setLoadingAI] = useState(false);
 
-  // STEP 3 (TASKS)
+  // TASKS (STEP 3)
   const [tasks, setTasks] = useState<any[]>([]);
   const [taskInput, setTaskInput] = useState("");
 
@@ -68,7 +68,7 @@ export default function MeetingRoom() {
     start();
   }, []);
 
-  // ---------------- TASK FETCH (STEP 3) ----------------
+  // ---------------- TASK FETCH ----------------
   useEffect(() => {
     fetch(`http://localhost:5000/api/tasks?roomId=${roomId}`)
       .then((res) => res.json())
@@ -119,7 +119,7 @@ export default function MeetingRoom() {
     setIsSharing(false);
   };
 
-  // ---------------- TASK CREATE (STEP 3) ----------------
+  // ---------------- TASK CREATE ----------------
   const createTask = async () => {
     const res = await fetch("http://localhost:5000/api/tasks", {
       method: "POST",
@@ -208,7 +208,7 @@ export default function MeetingRoom() {
     }
   };
 
-  // ---------------- STEP 4: SAVE MEETING ----------------
+  // ---------------- SAVE MEETING ----------------
   const saveMeeting = async () => {
     try {
       await fetch("http://localhost:5000/api/history/save", {
@@ -226,7 +226,7 @@ export default function MeetingRoom() {
     }
   };
 
-  // ---------------- LEAVE MEETING (STEP 4) ----------------
+  // ---------------- LEAVE ----------------
   const leaveMeeting = async () => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
     socket.current.emit("leave-room", roomId);
@@ -250,6 +250,7 @@ export default function MeetingRoom() {
 
         <div style={styles.side}>
 
+          {/* PARTICIPANTS */}
           <div style={styles.card}>
             <div>Participants ({participants.length})</div>
             {participants.map((p) => (
@@ -257,6 +258,7 @@ export default function MeetingRoom() {
             ))}
           </div>
 
+          {/* CHAT */}
           <div style={styles.card}>
             <div style={styles.chatBox}>
               {messages.map((m, i) => (
@@ -278,6 +280,31 @@ export default function MeetingRoom() {
             </button>
           </div>
 
+          {/* TASKS */}
+          <div style={styles.card}>
+            <div>Tasks</div>
+
+            <input
+              value={taskInput}
+              onChange={(e) => setTaskInput(e.target.value)}
+              style={styles.input}
+              placeholder="New task..."
+            />
+
+            <button onClick={createTask} style={styles.btn}>
+              Add Task
+            </button>
+
+            <div style={{ marginTop: 10 }}>
+              {tasks.map((t) => (
+                <div key={t._id}>
+                  <b>{t.title}</b> - {t.status}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* AI */}
           <div style={styles.card}>
             <div>AI Features</div>
 
@@ -294,60 +321,34 @@ export default function MeetingRoom() {
               {transcript && <p><b>Transcript:</b> {transcript}</p>}
               {summary && <p><b>Summary:</b> {summary}</p>}
               {actionItems.length > 0 && (
-                <>
-                  <b>Action Items:</b>
-                  <ul>
-                    {actionItems.map((a, i) => (
-                      <li key={i}>{a}</li>
-                    ))}
-                  </ul>
-                </>
+                <ul>
+                  {actionItems.map((a, i) => (
+                    <li key={i}>{a}</li>
+                  ))}
+                </ul>
               )}
-            </div>
-          </div>
-
-          {/* TASKS (STEP 3) */}
-          <div style={styles.card}>
-            <div>Tasks</div>
-
-            <input
-              value={taskInput}
-              onChange={(e) => setTaskInput(e.target.value)}
-              placeholder="New task..."
-              style={styles.input}
-            />
-
-            <button onClick={createTask} style={styles.btn}>
-              Add Task
-            </button>
-
-            <div style={{ marginTop: 10 }}>
-              {tasks.map((t) => (
-                <div key={t._id}>
-                  <b>{t.title}</b> - {t.status}
-                </div>
-              ))}
             </div>
           </div>
 
         </div>
       </div>
 
+      {/* CONTROLS */}
       <div style={styles.controls}>
-        <button onClick={toggleMute} style={styles.btn}>
-          {isMuted ? "Unmute" : "Mute"}
+        <button onClick={() => toggleMute()} style={styles.btn}>
+          Mute
         </button>
 
-        <button onClick={toggleCamera} style={styles.btn}>
-          {isCameraOff ? "Cam On" : "Cam Off"}
+        <button onClick={() => toggleCamera()} style={styles.btn}>
+          Camera
         </button>
 
         <button onClick={isSharing ? stopShare : startShare} style={styles.btn}>
-          {isSharing ? "Stop Share" : "Share"}
+          Share
         </button>
 
         <button onClick={isRecording ? stopRecording : startRecording} style={styles.btn}>
-          {isRecording ? "Stop Rec" : "Record"}
+          Record
         </button>
 
         <button onClick={leaveMeeting} style={styles.leave}>
@@ -357,7 +358,6 @@ export default function MeetingRoom() {
     </div>
   );
 }
-
 /* ---------------- STYLES (UNCHANGED, ONLY SAFE FIXS) ---------------- */
 const styles: any = {
   page: {

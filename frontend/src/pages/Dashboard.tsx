@@ -74,7 +74,7 @@ export default function Dashboard() {
             <div
               key={m._id}
               style={styles.historyCard}
-              onClick={() => navigate(`/history?id=${m._id}`)} // ✅ ADDED
+              onClick={() => navigate(`/history/view?id=${m._id}`)} // ✅ ADDED
             >
               <b>Room:</b> {m.roomId}
 

@@ -1,34 +1,34 @@
-const router = require("express").Router();
-const Task = require("../models/Task");
+import express from "express";
+import Task from "../models/Task.js";
 
+const router = express.Router();
+
+// GET tasks
 router.get("/", async (req, res) => {
-  const { roomId } = req.query;
-
-  const tasks = await Task.find(roomId ? { roomId } : {});
+  const tasks = await Task.find({ roomId: req.query.roomId });
   res.json(tasks);
 });
+
+// CREATE task
 router.post("/", async (req, res) => {
   const task = await Task.create(req.body);
   res.json(task);
 });
 
+// UPDATE task (THIS FIXES YOUR PUT ISSUE)
 router.put("/:id", async (req, res) => {
-  const task = await Task.findByIdAndUpdate(req.params.id, req.body, { new: true });
-  res.json(task);
-}); 
-// UPDATE TASK STATUS ONLY
-router.patch("/:id/status", async (req, res) => {
-  try {
-    const task = await Task.findByIdAndUpdate(
-      req.params.id,
-      { status: req.body.status },
-      { new: true }
-    );
-
-    res.json(task);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  const updated = await Task.findByIdAndUpdate(
+    req.params.id,
+    req.body,
+    { new: true }
+  );
+  res.json(updated);
 });
 
-module.exports = router;
+// DELETE task
+router.delete("/:id", async (req, res) => {
+  await Task.findByIdAndDelete(req.params.id);
+  res.json({ success: true });
+});
+
+export default router;

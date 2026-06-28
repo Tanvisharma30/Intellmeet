@@ -1,67 +1,128 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 export default function MeetingDetails() {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+
   const id = searchParams.get("id");
 
-  const [meeting, setMeeting] = useState(null);
+  const [meeting, setMeeting] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("http://localhost:5000/api/history/all")
-      .then((res) => res.json())
-      .then((data) => {
-        const found = data.find((m) => m._id === id);
-        setMeeting(found);
-      });
+    const fetchMeeting = async () => {
+      try {
+        const res = await fetch(`http://localhost:5000/api/history/all`);
+        const data = await res.json();
+
+        const found = data.find((m: any) => m._id === id);
+
+        setMeeting(found || null);
+      } catch (err) {
+        console.log(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (id) fetchMeeting();
   }, [id]);
 
+  if (loading) {
+    return (
+      <div style={styles.page}>
+        <h2>Loading...</h2>
+      </div>
+    );
+  }
+
   if (!meeting) {
-    return <div style={{ color: "white", padding: 20 }}>Loading...</div>;
+    return (
+      <div style={styles.page}>
+        <h2>Meeting not found</h2>
+
+        <button
+          style={styles.button}
+          onClick={() => navigate("/dashboard")}
+        >
+          Back to Dashboard
+        </button>
+      </div>
+    );
   }
 
   return (
     <div style={styles.page}>
-      <h2>📌 Meeting Details</h2>
+      <button
+        style={styles.button}
+        onClick={() => navigate("/dashboard")}
+      >
+        ← Back
+      </button>
+
+      <h1>Meeting Details</h1>
 
       <div style={styles.card}>
-        <b>Room:</b> {meeting.roomId}
+        <h3>Room ID</h3>
+        <p>{meeting.roomId}</p>
       </div>
 
       <div style={styles.card}>
-        <b>Summary:</b>
-        <p>{meeting.summary}</p>
+        <h3>Created</h3>
+        <p>{new Date(meeting.createdAt).toLocaleString()}</p>
       </div>
 
       <div style={styles.card}>
-        <b>Transcript:</b>
-        <p>{meeting.transcript}</p>
+        <h3>Transcript</h3>
+        <p>{meeting.transcript || "No transcript available"}</p>
       </div>
 
       <div style={styles.card}>
-        <b>Action Items:</b>
-        <ul>
-          {meeting.actionItems?.map((a, i) => (
-            <li key={i}>{a}</li>
-          ))}
-        </ul>
+        <h3>Summary</h3>
+        <p>{meeting.summary || "No summary available"}</p>
+      </div>
+
+      <div style={styles.card}>
+        <h3>Action Items</h3>
+
+        {meeting.actionItems?.length > 0 ? (
+          <ul>
+            {meeting.actionItems.map((item: string, index: number) => (
+              <li key={index}>{item}</li>
+            ))}
+          </ul>
+        ) : (
+          <p>No action items</p>
+        )}
       </div>
     </div>
   );
 }
 
-const styles = {
+const styles: any = {
   page: {
-    padding: 20,
+    minHeight: "100vh",
     background: "#0a0a0a",
     color: "white",
-    minHeight: "100vh",
+    padding: 30,
   },
+
+  button: {
+    padding: "10px 16px",
+    marginBottom: 20,
+    background: "#3b82f6",
+    color: "white",
+    border: "none",
+    borderRadius: 8,
+    cursor: "pointer",
+  },
+
   card: {
     background: "#111",
-    padding: 15,
-    marginTop: 10,
-    borderRadius: 10,
     border: "1px solid #222",
+    borderRadius: 10,
+    padding: 20,
+    marginBottom: 20,
   },
 };
