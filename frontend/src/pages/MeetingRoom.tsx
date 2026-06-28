@@ -30,7 +30,7 @@ export default function MeetingRoom() {
   const [actionItems, setActionItems] = useState<string[]>([]);
   const [loadingAI, setLoadingAI] = useState(false);
 
-  // TASKS (STEP 3)
+  // TASKS
   const [tasks, setTasks] = useState<any[]>([]);
   const [taskInput, setTaskInput] = useState("");
 
@@ -134,6 +134,28 @@ export default function MeetingRoom() {
     const data = await res.json();
     setTasks((p) => [...p, data]);
     setTaskInput("");
+  };
+
+  // ---------------- ⭐ NEW: TASK STATUS UPDATE (KANBAN) ----------------
+  const updateTaskStatus = async (taskId: string, status: string) => {
+    try {
+      const res = await fetch(
+        `http://localhost:5000/api/tasks/${taskId}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status }),
+        }
+      );
+
+      const updated = await res.json();
+
+      setTasks((prev) =>
+        prev.map((t) => (t._id === taskId ? updated : t))
+      );
+    } catch (err) {
+      console.log("Task update failed");
+    }
   };
 
   // ---------------- RECORDING ----------------
@@ -280,7 +302,7 @@ export default function MeetingRoom() {
             </button>
           </div>
 
-          {/* TASKS */}
+          {/* TASKS (KANBAN READY) */}
           <div style={styles.card}>
             <div>Tasks</div>
 
@@ -297,8 +319,21 @@ export default function MeetingRoom() {
 
             <div style={{ marginTop: 10 }}>
               {tasks.map((t) => (
-                <div key={t._id}>
+                <div key={t._id} style={{ marginBottom: 8 }}>
                   <b>{t.title}</b> - {t.status}
+
+                  {/* ⭐ KANBAN BUTTONS */}
+                  <div>
+                    <button onClick={() => updateTaskStatus(t._id, "todo")} style={styles.btn}>
+                      Todo
+                    </button>
+                    <button onClick={() => updateTaskStatus(t._id, "doing")} style={styles.btn}>
+                      Doing
+                    </button>
+                    <button onClick={() => updateTaskStatus(t._id, "done")} style={styles.btn}>
+                      Done
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -335,25 +370,11 @@ export default function MeetingRoom() {
 
       {/* CONTROLS */}
       <div style={styles.controls}>
-        <button onClick={() => toggleMute()} style={styles.btn}>
-          Mute
-        </button>
-
-        <button onClick={() => toggleCamera()} style={styles.btn}>
-          Camera
-        </button>
-
-        <button onClick={isSharing ? stopShare : startShare} style={styles.btn}>
-          Share
-        </button>
-
-        <button onClick={isRecording ? stopRecording : startRecording} style={styles.btn}>
-          Record
-        </button>
-
-        <button onClick={leaveMeeting} style={styles.leave}>
-          Leave
-        </button>
+        <button onClick={toggleMute} style={styles.btn}>Mute</button>
+        <button onClick={toggleCamera} style={styles.btn}>Camera</button>
+        <button onClick={isSharing ? stopShare : startShare} style={styles.btn}>Share</button>
+        <button onClick={isRecording ? stopRecording : startRecording} style={styles.btn}>Record</button>
+        <button onClick={leaveMeeting} style={styles.leave}>Leave</button>
       </div>
     </div>
   );
