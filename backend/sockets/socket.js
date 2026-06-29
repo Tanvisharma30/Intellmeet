@@ -33,6 +33,33 @@ module.exports = (io) => {
       socket.to(roomId).emit("user-typing", name);
     });
 
+    // 🔥 REAL-TIME NOTIFICATION (GENERIC)
+    socket.on("send-notification", ({ roomId, message, type }) => {
+      io.to(roomId).emit("receive-notification", {
+        message,
+        type,
+        time: new Date(),
+      });
+    });
+
+    // 🔥 TASK CREATED NOTIFICATION
+    socket.on("task-created", (data) => {
+      io.to(data.roomId).emit("notification", {
+        type: "task",
+        message: `🟢 New task created: ${data.title}`,
+        createdAt: new Date(),
+      });
+    });
+
+    // 🔥 TASK UPDATED NOTIFICATION
+    socket.on("task-updated", (data) => {
+      io.to(data.roomId).emit("notification", {
+        type: "task",
+        message: `🟡 Task updated: ${data.title} → ${data.status}`,
+        createdAt: new Date(),
+      });
+    });
+
     // LEAVE
     socket.on("leave-room", (roomId) => {
       if (rooms.has(roomId)) {

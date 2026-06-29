@@ -1,10 +1,15 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState, useRef } from "react";
+import { useNavigate } from "react-router-dom"; 
+import { io } from "socket.io-client";
 
 export default function Dashboard() {
   const navigate = useNavigate();
 
   const [meetings, setMeetings] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [openNotif, setOpenNotif] = useState(false);
+
+  const socket = useRef<any>(null);
 
   const createMeeting = () => {
     const roomId = Math.random().toString(36).substring(2, 8);
@@ -16,18 +21,103 @@ export default function Dashboard() {
     if (roomId) navigate(`/lobby?id=${roomId}`);
   };
 
-  // ---------------- FETCH HISTORY ----------------
+  // ---------------- HISTORY ----------------
   useEffect(() => {
     fetch("http://localhost:5000/api/history/all")
       .then((res) => res.json())
-      .then((data) => setMeetings(data))
+      .then(setMeetings)
       .catch(console.log);
   }, []);
+
+  // ---------------- NOTIFICATIONS ----------------
+  useEffect(() => {
+    const fetchNotifications = () => {
+      fetch("http://localhost:5000/api/notifications")
+        .then((res) => res.json())
+        .then(setNotifications)
+        .catch(console.log);
+    };
+
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 5000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const markAsRead = async (id: string) => {
+    await fetch(`http://localhost:5000/api/notifications/${id}`, {
+      method: "PUT",
+    });
+
+    setNotifications((prev) =>
+      prev.map((n) =>
+        n._id === id ? { ...n, read: true } : n
+      )
+    );
+  };
+
+  const removeNotification = (id: string) => {
+    setNotifications((prev) => prev.filter((n) => n._id !== id));
+  };
+
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
     <div style={styles.page}>
 
-      {/* SIDEBAR */}
+      {/* 🔔 NOTIFICATION BELL (ADDED ONLY) */}
+      <div style={styles.bellWrapper}>
+        <div style={styles.bell} onClick={() => setOpenNotif(!openNotif)}>
+          🔔
+          {unreadCount > 0 && (
+            <span style={styles.badge}>{unreadCount}</span>
+          )}
+        </div>
+
+        {openNotif && (
+          <div style={styles.dropdown}>
+            <div style={styles.dropdownTitle}>Notifications</div>
+
+            {notifications.length === 0 && (
+              <div style={{ opacity: 0.6 }}>No notifications</div>
+            )}
+
+            {notifications.map((n) => (
+              <div
+                key={n._id}
+                style={{
+                  ...styles.notifItem,
+                  opacity: n.read ? 0.5 : 1,
+                }}
+                onClick={() => markAsRead(n._id)}
+              >
+                <div>
+                  <b>{n.type}</b>
+                  <div>
+                    {n.type === "task" ? "🟡 " : "🔵 "}
+                    {n.message}
+                  </div>
+                  <small style={{ opacity: 0.6 }}>
+                    {new Date(n.createdAt).toLocaleString()}
+                  </small>
+                </div>
+
+                <span
+                  style={styles.close}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeNotification(n._id);
+                  }}
+                >
+                  ❌
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* SIDEBAR (UNCHANGED) */}
       <div style={styles.sidebar}>
         <div style={styles.logo}>IntellMeet</div>
 
@@ -40,12 +130,11 @@ export default function Dashboard() {
         </button>
       </div>
 
-      {/* MAIN */}
+      {/* MAIN (UNCHANGED) */}
       <div style={styles.main}>
         <h1 style={styles.title}>Welcome back 👋</h1>
         <p style={styles.subtitle}>Start or manage meetings</p>
 
-        {/* QUICK ACTIONS */}
         <div style={styles.grid}>
           <div style={styles.card}>
             <h3>Instant Meeting</h3>
@@ -62,7 +151,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* HISTORY */}
         <div style={styles.history}>
           <h2>📅 Meeting History</h2>
 
@@ -74,7 +162,7 @@ export default function Dashboard() {
             <div
               key={m._id}
               style={styles.historyCard}
-              onClick={() => navigate(`/history/view?id=${m._id}`)} // ✅ ADDED
+              onClick={() => navigate(`/history/view?id=${m._id}`)}
             >
               <b>Room:</b> {m.roomId}
 
@@ -93,7 +181,7 @@ export default function Dashboard() {
   );
 }
 
-/* ---------------- STYLES ---------------- */
+/* ---------------- STYLES (ONLY ADDITION = BELL) ---------------- */
 const styles: any = {
   page: {
     height: "100vh",
@@ -103,6 +191,67 @@ const styles: any = {
     overflow: "hidden",
   },
 
+  /* 🔔 NOTIFICATION SYSTEM */
+  bellWrapper: {
+    position: "fixed",
+    top: 15,
+    right: 15,
+    zIndex: 9999,
+  },
+
+  bell: {
+    cursor: "pointer",
+    fontSize: 22,
+    position: "relative",
+    background: "#111",
+    padding: "8px 10px",
+    borderRadius: 10,
+    border: "1px solid #333",
+  },
+
+  badge: {
+    position: "absolute",
+    top: -6,
+    right: -6,
+    background: "red",
+    color: "white",
+    borderRadius: "50%",
+    fontSize: 10,
+    padding: "2px 5px",
+  },
+
+  dropdown: {
+    position: "absolute",
+    right: 0,
+    top: 45,
+    width: 320,
+    maxHeight: 400,
+    overflowY: "auto",
+    background: "#111",
+    border: "1px solid #333",
+    borderRadius: 10,
+    padding: 10,
+  },
+
+  dropdownTitle: {
+    fontWeight: "bold",
+    marginBottom: 10,
+  },
+
+  notifItem: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 10,
+    padding: 10,
+    borderBottom: "1px solid #222",
+    cursor: "pointer",
+  },
+
+  close: {
+    cursor: "pointer",
+  },
+
+  /* REST IS EXACTLY YOUR CODE */
   sidebar: {
     width: 240,
     padding: 20,
@@ -182,7 +331,7 @@ const styles: any = {
     background: "#111",
     borderRadius: 8,
     border: "1px solid #222",
-    cursor: "pointer", // ✅ ADDED
+    cursor: "pointer",
   },
 
   summary: {

@@ -14,14 +14,14 @@ router.get("/", async (req, res) => {
   }
 });
 
-// CREATE task + notification
+// CREATE TASK + NOTIFICATION
 router.post("/", async (req, res) => {
   try {
     const task = await Task.create(req.body);
 
     await Notification.create({
       type: "task",
-      message: `New task created: ${task.title}`,
+      message: `🟢 New task created: ${task.title}`,
       roomId: task.roomId,
     });
 
@@ -31,7 +31,7 @@ router.post("/", async (req, res) => {
   }
 });
 
-// UPDATE task + notification
+// UPDATE TASK + NOTIFICATION
 router.put("/:id", async (req, res) => {
   try {
     const updated = await Task.findByIdAndUpdate(
@@ -42,7 +42,7 @@ router.put("/:id", async (req, res) => {
 
     await Notification.create({
       type: "task",
-      message: `Task updated: ${updated.title} → ${updated.status}`,
+      message: `🟡 Task updated: ${updated.title} → ${updated.status}`,
       roomId: updated.roomId,
     });
 
@@ -52,10 +52,17 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-// DELETE task
+// DELETE TASK
 router.delete("/:id", async (req, res) => {
   try {
     await Task.findByIdAndDelete(req.params.id);
+
+    await Notification.create({
+      type: "task",
+      message: `🔴 Task deleted`,
+      roomId: req.body?.roomId || "global",
+    });
+
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });

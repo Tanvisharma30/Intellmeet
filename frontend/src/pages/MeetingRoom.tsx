@@ -49,8 +49,6 @@ export default function MeetingRoom() {
     socket.current.on("receive-message", (data: any) => {
       setMessages((p) => [...p, data]);
     });
-
-    return () => socket.current.disconnect();
   }, [roomId]);
 
   // ---------------- CAMERA ----------------
@@ -136,7 +134,7 @@ export default function MeetingRoom() {
     setTaskInput("");
   };
 
-  // ---------------- ⭐ NEW: TASK STATUS UPDATE (KANBAN) ----------------
+  // ---------------- TASK UPDATE ----------------
   const updateTaskStatus = async (taskId: string, status: string) => {
     try {
       const res = await fetch(
@@ -302,7 +300,7 @@ export default function MeetingRoom() {
             </button>
           </div>
 
-          {/* TASKS (KANBAN READY) */}
+          {/* TASKS */}
           <div style={styles.card}>
             <div>Tasks</div>
 
@@ -322,17 +320,10 @@ export default function MeetingRoom() {
                 <div key={t._id} style={{ marginBottom: 8 }}>
                   <b>{t.title}</b> - {t.status}
 
-                  {/* ⭐ KANBAN BUTTONS */}
                   <div>
-                    <button onClick={() => updateTaskStatus(t._id, "todo")} style={styles.btn}>
-                      Todo
-                    </button>
-                    <button onClick={() => updateTaskStatus(t._id, "doing")} style={styles.btn}>
-                      Doing
-                    </button>
-                    <button onClick={() => updateTaskStatus(t._id, "done")} style={styles.btn}>
-                      Done
-                    </button>
+                    <button onClick={() => updateTaskStatus(t._id, "todo")} style={styles.btn}>Todo</button>
+                    <button onClick={() => updateTaskStatus(t._id, "doing")} style={styles.btn}>Doing</button>
+                    <button onClick={() => updateTaskStatus(t._id, "done")} style={styles.btn}>Done</button>
                   </div>
                 </div>
               ))}
@@ -379,6 +370,7 @@ export default function MeetingRoom() {
     </div>
   );
 }
+
 /* ---------------- STYLES (UNCHANGED, ONLY SAFE FIXS) ---------------- */
 const styles: any = {
   page: {
