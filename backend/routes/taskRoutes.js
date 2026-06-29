@@ -1,34 +1,65 @@
-import express from "express";
-import Task from "../models/Task.js";
+const express = require("express");
+const Task = require("../models/Task");
+const Notification = require("../models/Notification");
 
 const router = express.Router();
 
 // GET tasks
 router.get("/", async (req, res) => {
-  const tasks = await Task.find({ roomId: req.query.roomId });
-  res.json(tasks);
+  try {
+    const tasks = await Task.find({ roomId: req.query.roomId });
+    res.json(tasks);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// CREATE task
+// CREATE task + notification
 router.post("/", async (req, res) => {
-  const task = await Task.create(req.body);
-  res.json(task);
+  try {
+    const task = await Task.create(req.body);
+
+    await Notification.create({
+      type: "task",
+      message: `New task created: ${task.title}`,
+      roomId: task.roomId,
+    });
+
+    res.json(task);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// UPDATE task (THIS FIXES YOUR PUT ISSUE)
+// UPDATE task + notification
 router.put("/:id", async (req, res) => {
-  const updated = await Task.findByIdAndUpdate(
-    req.params.id,
-    req.body,
-    {  returnDocument: "after" }
-  );
-  res.json(updated);
+  try {
+    const updated = await Task.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { returnDocument: "after" }
+    );
+
+    await Notification.create({
+      type: "task",
+      message: `Task updated: ${updated.title} → ${updated.status}`,
+      roomId: updated.roomId,
+    });
+
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // DELETE task
 router.delete("/:id", async (req, res) => {
-  await Task.findByIdAndDelete(req.params.id);
-  res.json({ success: true });
+  try {
+    await Task.findByIdAndDelete(req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-export default router;
+module.exports = router;

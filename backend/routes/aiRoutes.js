@@ -1,9 +1,8 @@
 const express = require("express");
+
 const router = express.Router();
 
-/**
- * REAL TRANSCRIPTION (TEMP MOCK - upgrade later to Whisper)
- */
+// TRANSCRIBE (mock)
 router.post("/transcribe", async (req, res) => {
   try {
     const { text } = req.body;
@@ -12,11 +11,7 @@ router.post("/transcribe", async (req, res) => {
       return res.status(400).json({ error: "No text provided" });
     }
 
-    // Simulated AI transcription (we will replace with OpenAI later)
-    const transcript = text
-      .split(" ")
-      .map((word, i) => `${word}`)
-      .join(" ");
+    const transcript = text.split(" ").join(" ");
 
     res.json({
       success: true,
@@ -27,23 +22,17 @@ router.post("/transcribe", async (req, res) => {
   }
 });
 
-/**
- * REAL SUMMARY (TEMP LOGIC)
- */
+// SUMMARY (mock)
 router.post("/summary", async (req, res) => {
   try {
     const { transcript } = req.body;
 
-    if (!transcript) {
-      return res.status(400).json({ error: "No transcript provided" });
-    }
-
-    const summary = `Summary: This meeting discussed ${transcript.slice(0, 80)}...`;
+    const summary = `Summary: ${transcript.slice(0, 80)}...`;
 
     const actionItems = [
-      "Follow up on discussion points",
-      "Create task list from meeting",
-      "Assign responsibilities"
+      "Follow up discussion",
+      "Create tasks",
+      "Assign work",
     ];
 
     res.json({

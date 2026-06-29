@@ -3,11 +3,14 @@ const Meeting = require("../models/Meeting");
 // CREATE MEETING
 exports.createMeeting = async (req, res) => {
   try {
-    const roomId = Math.random().toString(36).substring(2, 8);
+    const { roomId, participants, transcript, summary, actionItems } = req.body;
 
     const meeting = await Meeting.create({
       roomId,
-      host: req.user.id,
+      participants,
+      transcript,
+      summary,
+      actionItems,
     });
 
     res.json(meeting);

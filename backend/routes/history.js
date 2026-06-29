@@ -1,14 +1,12 @@
-const router = require("express").Router();
-const MeetingHistory = require("../models/MeetingHistory");
+const express = require("express");
+const router = express.Router();
 
-router.post("/save", async (req, res) => {
-  const data = await MeetingHistory.create(req.body);
-  res.json(data);
-});
+const meetingController = require("../controllers/meetingController");
 
-router.get("/all", async (req, res) => {
-  const data = await MeetingHistory.find().sort({ createdAt: -1 });
-  res.json(data);
-});
+// create meeting
+router.post("/create", meetingController.createMeeting);
+
+// get meetings
+router.get("/", meetingController.getMeetings);
 
 module.exports = router;
