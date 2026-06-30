@@ -7,7 +7,14 @@ export default function MeetingRoom() {
   const [searchParams] = useSearchParams();
   const roomId = searchParams.get("id") || "";
 
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
+   
+  let user = null;
+
+  try {
+    user = JSON.parse(localStorage.getItem("user") || "{}");
+  } catch {
+    user = { name: "Guest" };
+  }
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const socket = useRef<any>(null);
@@ -16,7 +23,7 @@ export default function MeetingRoom() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
 
-  const [participants, setParticipants] = useState<string[]>([]);
+  const [participants, setParticipants] = useState<{ id: string; name: string }[]>([]);
   const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState("");
 
@@ -75,11 +82,15 @@ export default function MeetingRoom() {
     socket.current = io("http://localhost:5000");
 
     socket.current.on("connect", () => {
-      socket.current.emit("join-room", roomId);
+      socket.current.emit("join-room",{  
+        roomId,
+        name:user?.name || "Guest",
+      });
     });
 
-    socket.current.on("room-users", (users: string[]) => {
-      setParticipants([...new Set(users)]);
+    socket.current.on("room-users", (users: any[]) => { 
+      const names = users.map((u) => u.name || "Guest");
+      setParticipants(users);
     });
 
     socket.current.on("receive-message", (data: any) => {
@@ -299,7 +310,10 @@ export default function MeetingRoom() {
   };
 
   const leaveMeeting = async () => {
-    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current?.getTracks().forEach((t) => t.stop()); 
+    Object.values(peersRef.current).forEach((pc: any) => { 
+      pc.close();
+    });
     socket.current.emit("leave-room", roomId);
     await saveMeeting();
     navigate("/dashboard");
@@ -314,22 +328,45 @@ export default function MeetingRoom() {
       </div> 
 
       <div style={styles.body}>
-        <div style={styles.videoArea}>
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            style={styles.video}
-          />
-        </div> 
+        <div style={styles.videoGrid}>
+        {/* LOCAL VIDEO */}
+          <div style={styles.videoCard}>
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              style={styles.video}
+            />
+            <div style={styles.nameTag}>You</div>
+         </div>
+
+         {/* REMOTE USERS */}
+         {remoteStreams.map((user) => (
+            <div key={user.id} style={styles.videoCard}>
+              <video
+                autoPlay
+                playsInline
+                style={styles.video}
+                ref={(el) => {
+                  if (el && user.stream) {
+                    el.srcObject = user.stream;
+                  }
+                }}
+              />
+              <div style={styles.nameTag}>
+                {user.id}
+              </div>
+            </div>
+          ))}
+        </div>
 
         <div style={styles.side}>
           {/* PARTICIPANTS */}
           <div style={styles.card}>
             <div>Participants ({participants.length})</div>
-            {participants.map((p) => (
-              <div key={p}>🟢 {p}</div>
+            {participants.map((p:any,i) => (
+              <div key={p.id || i}>🟢 {p.name || p}</div>
             ))}
           </div>
 
@@ -432,10 +469,10 @@ export default function MeetingRoom() {
       {/* CONTROLS */}
       <div style={styles.controls}>
         <button onClick={toggleMute} style={styles.btn}>
-          Mute
+            {isMuted ? " Unmute" : " Mute"}
         </button>
         <button onClick={toggleCamera} style={styles.btn}>
-          Camera
+            {isCameraOff ? "Start Camera" : " Stop Camera"}
         </button>
         <button
           onClick={isSharing ? stopShare : startShare}
@@ -490,12 +527,6 @@ const styles: any = {
     alignItems: "center",
   },
 
-  video: {
-    width: "95%",
-    maxHeight: "75vh",
-    borderRadius: 16,
-    background: "#111",
-  },
 
   side: {
     width: 320,
@@ -559,28 +590,38 @@ const styles: any = {
     borderTop: "1px solid #1f1f1f",
   }, 
 
+
   videoGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-    gap: 10,
+    gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+    gap: "12px",
     width: "100%",
+    padding: "10px",
   },
 
   videoCard: {
     position: "relative",
-    background: "#111",
-    borderRadius: 10,
+    background: "#111827",
+    borderRadius: "12px",
     overflow: "hidden",
-    border: "1px solid #222",
+    height: "200px",
   },
 
-  videoLabel: {
-    position: "absolute",
-    bottom: 5,
-    left: 5,
-    fontSize: 10,
-    background: "rgba(0,0,0,0.6)",
-    padding: "2px 6px",
-    borderRadius: 4,
+  video: {
+    width: "100%",
+    height: "100%",
+    objectFit: "cover",
   },
+
+  nameTag: {
+    position: "absolute",
+    bottom: "8px",
+    left: "8px",
+    background: "rgba(0,0,0,0.6)",
+    color: "white",
+    padding: "4px 8px",
+    fontSize: "12px",
+    borderRadius: "6px",
+  },
+
 };

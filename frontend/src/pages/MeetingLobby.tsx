@@ -45,46 +45,139 @@ export default function MeetingLobby() {
   return (
     <div style={styles.page}>
       <div style={styles.card}>
-        <video ref={videoRef} autoPlay playsInline style={styles.video} />
-
-        <div style={{ marginTop: 10 }}>
-          <button onClick={toggleMic}>Mic</button>
-          <button onClick={toggleCam}>Cam</button>
+        
+        {/* HEADER (NEW UI ONLY) */}
+        <div style={styles.header}>
+          <h2 style={styles.title}> IntellMeet Lobby</h2>
+          <p style={styles.subtitle}>Room ID: {roomId}</p>
         </div>
 
+        {/* VIDEO WRAPPER (NEW UI ONLY) */}
+        <div style={styles.videoWrapper}>
+          <video ref={videoRef} autoPlay playsInline style={styles.video} />
+
+          <div style={styles.overlay}>
+            {camOn ? " Camera On" : " Camera Off"}
+          </div>
+        </div>
+
+        {/* CONTROLS (UI UPGRADE ONLY) */}
+        <div style={styles.controls}>
+          <button onClick={toggleMic} style={micOn ? styles.btnOn : styles.btnOff}>
+              {micOn ? "Mic On" : "Mic Off"}
+          </button>
+
+          <button onClick={toggleCam} style={camOn ? styles.btnOn : styles.btnOff}>
+              {camOn ? "Cam On" : "Cam Off"}
+          </button>
+        </div>
+
+        {/* JOIN BUTTON (ENHANCED STYLE ONLY) */}
         <button onClick={joinMeeting} style={styles.join}>
-          Join Meeting
+            Join Meeting
         </button>
+
       </div>
     </div>
   );
-}
-
+} 
 const styles: any = {
   page: {
     height: "100vh",
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    background: "#0f172a",
+    background: "radial-gradient(circle at top, #1e293b, #0f172a)",
     color: "white",
+    fontFamily: "Arial",
   },
+
   card: {
-    padding: 20,
-    borderRadius: 12,
-    background: "#111827",
+    width: 420,
+    padding: 22,
+    borderRadius: 16,
+    background: "rgba(17, 24, 39, 0.85)",
+    border: "1px solid rgba(255,255,255,0.08)",
+    boxShadow: "0 0 40px rgba(59,130,246,0.15)",
+    backdropFilter: "blur(12px)",
+    textAlign: "center",
   },
+
+  header: {
+    marginBottom: 12,
+  },
+
+  title: {
+    margin: 0,
+    fontSize: 20,
+    fontWeight: 700,
+  },
+
+  subtitle: {
+    fontSize: 12,
+    opacity: 0.7,
+  },
+
+  videoWrapper: {
+    position: "relative",
+    marginTop: 15,
+  },
+
   video: {
-    width: 400,
-    borderRadius: 10,
-  },
-  join: {
-    marginTop: 10,
     width: "100%",
+    borderRadius: 12,
+    border: "1px solid rgba(255,255,255,0.1)",
+  },
+
+  overlay: {
+    position: "absolute",
+    bottom: 10,
+    left: 10,
+    background: "rgba(0,0,0,0.5)",
+    padding: "5px 10px",
+    borderRadius: 8,
+    fontSize: 12,
+  },
+
+  controls: {
+    display: "flex",
+    justifyContent: "space-between",
+    marginTop: 15,
+    gap: 10,
+  },
+
+  btnOn: {
+    flex: 1,
     padding: 10,
-    background: "#3b82f6",
+    borderRadius: 10,
+    border: "none",
+    background: "#10b981",
+    color: "white",
+    cursor: "pointer",
+    fontWeight: "bold",
+  },
+
+  btnOff: {
+    flex: 1,
+    padding: 10,
+    borderRadius: 10,
+    border: "none",
+    background: "#ef4444",
+    color: "white",
+    cursor: "pointer",
+    fontWeight: "bold",
+  },
+
+  join: {
+    marginTop: 15,
+    width: "100%",
+    padding: 12,
+    background: "linear-gradient(90deg, #3b82f6, #8b5cf6)",
     color: "white",
     border: "none",
-    borderRadius: 8,
+    borderRadius: 12,
+    fontWeight: "bold",
+    cursor: "pointer",
+    transition: "0.2s",
   },
 };

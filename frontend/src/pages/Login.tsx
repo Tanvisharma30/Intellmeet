@@ -8,14 +8,30 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
-    setLoading(true);
+  const handleLogin = async () => {
+    setLoading(true); 
 
-    setTimeout(() => {
-      localStorage.setItem("token", "demo-token");
-      setLoading(false);
+    try {
+      const res = await fetch("http://localhost:5000/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          password,
+        }),
+      }); 
+      const data = await res.json();
+
+
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user)); 
       navigate("/dashboard");
-    }, 800);
+    } catch (err){ 
+        console.log(err);
+    } finally{
+      setLoading(false);
+      
+    }
   };
 
   return (
