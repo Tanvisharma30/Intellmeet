@@ -24,7 +24,25 @@ export default function Login() {
 
 
       localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user)); 
+      localStorage.setItem("user", JSON.stringify(data.user));  
+
+      const finalUser = {
+        name:
+          data.user?.name ||
+          data.user?.email?.split("@")[0] ||
+          email.split("@")[0] ||
+          "Guest",
+        email: data.user?.email || email,
+      };
+
+
+
+
+
+
+
+
+      localStorage.setItem("user", JSON.stringify(finalUser));
       navigate("/dashboard");
     } catch (err){ 
         console.log(err);

@@ -4,7 +4,7 @@ export default function MeetingHistory() {
   const [data, setData] = useState<any[]>([]);
 
   useEffect(() => {
-    fetch("http://localhost:5000/api/history/all")
+    fetch("http://localhost:5000/api/history")
       .then((res) => res.json())
       .then(setData);
   }, []);

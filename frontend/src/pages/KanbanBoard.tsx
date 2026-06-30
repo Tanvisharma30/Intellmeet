@@ -12,7 +12,7 @@ export default function KanbanBoard() {
   const [title, setTitle] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // ---------------- FETCH TASKS ----------------
+  // fetch the task
   const fetchTasks = async () => {
     try {
       const res = await fetch("http://localhost:5000/api/tasks");
@@ -27,7 +27,7 @@ export default function KanbanBoard() {
     fetchTasks();
   }, []);
 
-  // ---------------- ADD TASK ----------------
+  // -add ur task
   const addTask = async () => {
     if (!title.trim()) return;
 
@@ -53,7 +53,7 @@ export default function KanbanBoard() {
     }
   };
 
-  // ---------------- MOVE TASK ----------------
+  // move the task
   const moveTask = async (id: string, status: Task["status"]) => {
     try {
       const res = await fetch(`http://localhost:5000/api/tasks/${id}`, {
@@ -72,12 +72,12 @@ export default function KanbanBoard() {
     }
   };
 
-  // ---------------- FILTERS ----------------
+  // filters
   const todo = tasks.filter((t) => t.status === "Todo");
   const progress = tasks.filter((t) => t.status === "In Progress");
   const done = tasks.filter((t) => t.status === "Done");
 
-  // ---------------- UI ----------------
+  // ui
   return (
     <div style={styles.page}>
       <h2 style={styles.title}>Project Kanban Board</h2>

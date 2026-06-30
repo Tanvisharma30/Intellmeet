@@ -21,7 +21,7 @@ export default function Dashboard() {
     if (roomId) navigate(`/lobby?id=${roomId}`);
   };
 
-  // ---------------- HISTORY ----------------
+  // history 
   useEffect(() => {
     fetch("http://localhost:5000/api/history/all")
       .then((res) => res.json())
@@ -29,7 +29,7 @@ export default function Dashboard() {
       .catch(console.log);
   }, []);
 
-  // ---------------- NOTIFICATIONS ----------------
+  // notifications
   useEffect(() => {
     const fetchNotifications = () => {
       fetch("http://localhost:5000/api/notifications")
@@ -65,7 +65,7 @@ export default function Dashboard() {
   return (
     <div style={styles.page}>
 
-      {/* 🔔 NOTIFICATION BELL (ADDED ONLY) */}
+      {/* notifying bell */}
       <div style={styles.bellWrapper}>
         <div style={styles.bell} onClick={() => setOpenNotif(!openNotif)}>
           🔔
@@ -117,7 +117,7 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* SIDEBAR (UNCHANGED) */}
+      {/* for sidebar*/}
       <div style={styles.sidebar}>
         <div style={styles.logo}>IntellMeet</div>
 
@@ -130,9 +130,9 @@ export default function Dashboard() {
         </button>
       </div>
 
-      {/* MAIN (UNCHANGED) */}
+      {/* MAIN  */}
       <div style={styles.main}>
-        <h1 style={styles.title}>Welcome back 👋</h1>
+        <h1 style={styles.title}>Welcome Here...</h1>
         <p style={styles.subtitle}>Start or manage meetings</p>
 
         <div style={styles.grid}>
@@ -181,7 +181,7 @@ export default function Dashboard() {
   );
 }
 
-/* ---------------- STYLES (ONLY ADDITION = BELL) ---------------- */
+/* style ui */
 const styles: any = {
   page: {
     height: "100vh",
@@ -191,7 +191,7 @@ const styles: any = {
     overflow: "hidden",
   },
 
-  /* 🔔 NOTIFICATION SYSTEM */
+  /*  NOTIFICATION SYSTEM */
   bellWrapper: {
     position: "fixed",
     top: 15,

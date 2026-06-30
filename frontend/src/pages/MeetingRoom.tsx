@@ -8,14 +8,7 @@ export default function MeetingRoom() {
   const roomId = searchParams.get("id") || "";
 
    
-  let user = null;
-
-  try {
-    user = JSON.parse(localStorage.getItem("user") || "{}");
-  } catch {
-    user = { name: "Guest" };
-  }
-
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const socket = useRef<any>(null);
 
@@ -297,7 +290,7 @@ export default function MeetingRoom() {
 
   // ---------------- SAVE + LEAVE ----------------
   const saveMeeting = async () => {
-    await fetch("http://localhost:5000/api/history/save", {
+    await fetch("http://localhost:5000/api/history/create", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -365,8 +358,8 @@ export default function MeetingRoom() {
           {/* PARTICIPANTS */}
           <div style={styles.card}>
             <div>Participants ({participants.length})</div>
-            {participants.map((p:any,i) => (
-              <div key={p.id || i}>🟢 {p.name || p}</div>
+            {participants.map((p) => (
+              <div key={p.id}>🟢 {p.name}</div>
             ))}
           </div>
 
