@@ -30,11 +30,47 @@ export default function MeetingRoom() {
   const [actionItems, setActionItems] = useState<string[]>([]);
   const [loadingAI, setLoadingAI] = useState(false);
 
-  // TASKS
+  const peersRef = useRef<any>({});
+  const [remoteStreams, setRemoteStreams] = useState<any[]>([]);
+
   const [tasks, setTasks] = useState<any[]>([]);
   const [taskInput, setTaskInput] = useState("");
 
-  // ---------------- SOCKET ----------------
+  // ---------------- WEBRTC ----------------
+  const createPeerConnection = (id: string) => {
+    const pc = new RTCPeerConnection({
+      iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+    });
+
+    peersRef.current[id] = pc;
+
+    streamRef.current?.getTracks().forEach((track) => {
+      pc.addTrack(track, streamRef.current!);
+    });
+
+    pc.ontrack = (event) => {
+      const stream = event.streams[0];
+
+      setRemoteStreams((prev) => {
+        const exists = prev.find((p) => p.id === id);
+        if (exists) return prev;
+        return [...prev, { id, stream }];
+      });
+    };
+
+    pc.onicecandidate = (event) => {
+      if (event.candidate) {
+        socket.current.emit("ice-candidate", {
+          to: id,
+          candidate: event.candidate,
+        });
+      }
+    };
+
+    return pc;
+  };
+
+  // ---------------- SOCKET + WEBRTC ----------------
   useEffect(() => {
     socket.current = io("http://localhost:5000");
 
@@ -49,6 +85,53 @@ export default function MeetingRoom() {
     socket.current.on("receive-message", (data: any) => {
       setMessages((p) => [...p, data]);
     });
+
+    // WEBRTC SIGNALING
+    socket.current.on("user-joined", async (userId: string) => {
+      if (userId === socket.current.id) return;
+
+      const pc = createPeerConnection(userId);
+
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+
+      socket.current.emit("offer", {
+        to: userId,
+        from: socket.current.id,
+        offer,
+      });
+    });
+
+    socket.current.on("offer", async ({ from, offer }) => {
+      const pc = createPeerConnection(from);
+
+      await pc.setRemoteDescription(offer);
+
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+
+      socket.current.emit("answer", {
+        to: from,
+        from: socket.current.id,
+        answer,
+      });
+    });
+
+    socket.current.on("answer", async ({ from, answer }) => {
+      const pc = peersRef.current[from];
+      if (pc) await pc.setRemoteDescription(answer);
+    });
+
+    socket.current.on("ice-candidate", async ({ from, candidate }) => {
+      const pc = peersRef.current[from];
+      if (pc && candidate) {
+        await pc.addIceCandidate(candidate);
+      }
+    });
+
+    return () => {
+      socket.current?.disconnect();
+    };
   }, [roomId]);
 
   // ---------------- CAMERA ----------------
@@ -66,7 +149,7 @@ export default function MeetingRoom() {
     start();
   }, []);
 
-  // ---------------- TASK FETCH ----------------
+  // ---------------- TASKS ----------------
   useEffect(() => {
     fetch(`http://localhost:5000/api/tasks?roomId=${roomId}`)
       .then((res) => res.json())
@@ -117,7 +200,7 @@ export default function MeetingRoom() {
     setIsSharing(false);
   };
 
-  // ---------------- TASK CREATE ----------------
+  // ---------------- TASKS ----------------
   const createTask = async () => {
     const res = await fetch("http://localhost:5000/api/tasks", {
       method: "POST",
@@ -134,26 +217,16 @@ export default function MeetingRoom() {
     setTaskInput("");
   };
 
-  // ---------------- TASK UPDATE ----------------
   const updateTaskStatus = async (taskId: string, status: string) => {
-    try {
-      const res = await fetch(
-        `http://localhost:5000/api/tasks/${taskId}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status }),
-        }
-      );
+    const res = await fetch(`http://localhost:5000/api/tasks/${taskId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
 
-      const updated = await res.json();
+    const updated = await res.json();
 
-      setTasks((prev) =>
-        prev.map((t) => (t._id === taskId ? updated : t))
-      );
-    } catch (err) {
-      console.log("Task update failed");
-    }
+    setTasks((prev) => prev.map((t) => (t._id === taskId ? updated : t)));
   };
 
   // ---------------- RECORDING ----------------
@@ -187,89 +260,71 @@ export default function MeetingRoom() {
 
   // ---------------- AI ----------------
   const generateTranscript = async () => {
-    try {
-      setLoadingAI(true);
+    const res = await fetch("http://localhost:5000/api/ai/transcribe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        audioText: messages.map((m) => m.message).join(" "),
+      }),
+    });
 
-      const res = await fetch("http://localhost:5000/api/ai/transcribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          audioText: messages.map((m) => m.message).join(" "),
-        }),
-      });
-
-      const data = await res.json();
-      setTranscript(data.transcript || "No transcript generated");
-    } catch {
-      setTranscript("Error generating transcript");
-    } finally {
-      setLoadingAI(false);
-    }
+    const data = await res.json();
+    setTranscript(data.transcript);
   };
 
   const generateSummary = async () => {
-    try {
-      setLoadingAI(true);
+    const res = await fetch("http://localhost:5000/api/ai/summary", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ transcript }),
+    });
 
-      const res = await fetch("http://localhost:5000/api/ai/summary", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ transcript }),
-      });
-
-      const data = await res.json();
-
-      setSummary(data.summary || "No summary generated");
-      setActionItems(data.actionItems || []);
-    } catch {
-      setSummary("Error generating summary");
-    } finally {
-      setLoadingAI(false);
-    }
+    const data = await res.json();
+    setSummary(data.summary);
+    setActionItems(data.actionItems);
   };
 
-  // ---------------- SAVE MEETING ----------------
+  // ---------------- SAVE + LEAVE ----------------
   const saveMeeting = async () => {
-    try {
-      await fetch("http://localhost:5000/api/history/save", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          roomId,
-          transcript,
-          summary,
-          actionItems,
-        }),
-      });
-    } catch (err) {
-      console.log("Save failed");
-    }
+    await fetch("http://localhost:5000/api/history/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        roomId,
+        transcript,
+        summary,
+        actionItems,
+      }),
+    });
   };
 
-  // ---------------- LEAVE ----------------
   const leaveMeeting = async () => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
     socket.current.emit("leave-room", roomId);
-
     await saveMeeting();
-
     navigate("/dashboard");
-  };
+  }; 
 
+  // ---------------- UI ----------------
   return (
     <div style={styles.page}>
       <div style={styles.top}>
         <div>IntellMeet</div>
         <div>Room: {roomId}</div>
-      </div>
+      </div> 
 
       <div style={styles.body}>
         <div style={styles.videoArea}>
-          <video ref={videoRef} autoPlay playsInline style={styles.video} />
-        </div>
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            style={styles.video}
+          />
+        </div> 
 
         <div style={styles.side}>
-
           {/* PARTICIPANTS */}
           <div style={styles.card}>
             <div>Participants ({participants.length})</div>
@@ -286,15 +341,13 @@ export default function MeetingRoom() {
                   <b>{m.sender}</b>: {m.message}
                 </div>
               ))}
-            </div>
-
+            </div> 
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               style={styles.input}
               placeholder="Message..."
             />
-
             <button onClick={sendMessage} style={styles.btn}>
               Send
             </button>
@@ -303,14 +356,12 @@ export default function MeetingRoom() {
           {/* TASKS */}
           <div style={styles.card}>
             <div>Tasks</div>
-
             <input
               value={taskInput}
               onChange={(e) => setTaskInput(e.target.value)}
               style={styles.input}
               placeholder="New task..."
             />
-
             <button onClick={createTask} style={styles.btn}>
               Add Task
             </button>
@@ -319,11 +370,25 @@ export default function MeetingRoom() {
               {tasks.map((t) => (
                 <div key={t._id} style={{ marginBottom: 8 }}>
                   <b>{t.title}</b> - {t.status}
-
                   <div>
-                    <button onClick={() => updateTaskStatus(t._id, "todo")} style={styles.btn}>Todo</button>
-                    <button onClick={() => updateTaskStatus(t._id, "doing")} style={styles.btn}>Doing</button>
-                    <button onClick={() => updateTaskStatus(t._id, "done")} style={styles.btn}>Done</button>
+                    <button
+                      onClick={() => updateTaskStatus(t._id, "todo")}
+                      style={styles.btn}
+                    >
+                      Todo
+                    </button>
+                    <button
+                      onClick={() => updateTaskStatus(t._id, "doing")}
+                      style={styles.btn}
+                    >
+                      Doing
+                    </button>
+                    <button
+                      onClick={() => updateTaskStatus(t._id, "done")}
+                      style={styles.btn}
+                    >
+                      Done
+                    </button>
                   </div>
                 </div>
               ))}
@@ -333,19 +398,25 @@ export default function MeetingRoom() {
           {/* AI */}
           <div style={styles.card}>
             <div>AI Features</div>
-
             <button onClick={generateTranscript} style={styles.btn}>
               AI Transcribe
             </button>
-
             <button onClick={generateSummary} style={styles.btn}>
               AI Summary
             </button>
 
             <div style={styles.aiBox}>
               {loadingAI && <p>Processing...</p>}
-              {transcript && <p><b>Transcript:</b> {transcript}</p>}
-              {summary && <p><b>Summary:</b> {summary}</p>}
+              {transcript && (
+                <p>
+                  <b>Transcript:</b> {transcript}
+                </p>
+              )}
+              {summary && (
+                <p>
+                  <b>Summary:</b> {summary}
+                </p>
+              )}
               {actionItems.length > 0 && (
                 <ul>
                   {actionItems.map((a, i) => (
@@ -355,20 +426,35 @@ export default function MeetingRoom() {
               )}
             </div>
           </div>
-
         </div>
       </div>
 
       {/* CONTROLS */}
       <div style={styles.controls}>
-        <button onClick={toggleMute} style={styles.btn}>Mute</button>
-        <button onClick={toggleCamera} style={styles.btn}>Camera</button>
-        <button onClick={isSharing ? stopShare : startShare} style={styles.btn}>Share</button>
-        <button onClick={isRecording ? stopRecording : startRecording} style={styles.btn}>Record</button>
-        <button onClick={leaveMeeting} style={styles.leave}>Leave</button>
-      </div>
+        <button onClick={toggleMute} style={styles.btn}>
+          Mute
+        </button>
+        <button onClick={toggleCamera} style={styles.btn}>
+          Camera
+        </button>
+        <button
+          onClick={isSharing ? stopShare : startShare}
+          style={styles.btn}
+        >
+          Share
+        </button>
+        <button
+          onClick={isRecording ? stopRecording : startRecording}
+          style={styles.btn}
+        >
+          Record
+        </button>
+        <button onClick={leaveMeeting} style={styles.leave}>
+          Leave
+        </button>
+      </div> 
     </div>
-  );
+  ); 
 }
 
 /* ---------------- STYLES (UNCHANGED, ONLY SAFE FIXS) ---------------- */
@@ -471,5 +557,30 @@ const styles: any = {
     gap: 10,
     padding: 10,
     borderTop: "1px solid #1f1f1f",
+  }, 
+
+  videoGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+    gap: 10,
+    width: "100%",
+  },
+
+  videoCard: {
+    position: "relative",
+    background: "#111",
+    borderRadius: 10,
+    overflow: "hidden",
+    border: "1px solid #222",
+  },
+
+  videoLabel: {
+    position: "absolute",
+    bottom: 5,
+    left: 5,
+    fontSize: 10,
+    background: "rgba(0,0,0,0.6)",
+    padding: "2px 6px",
+    borderRadius: 4,
   },
 };
