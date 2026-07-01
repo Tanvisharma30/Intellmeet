@@ -28,7 +28,15 @@ app.use(cors({
 
 
 }));
-app.use(express.json());
+app.use(express.json()); 
+
+app.get("/", (req, res) => {
+  res.json({
+    project: "IntellMeet Backend",
+    status: "Running",
+    message: "Backend deployed successfully on Render"
+  });
+});
 
 // routes
 app.use("/api/tasks", taskRoutes);
