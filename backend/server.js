@@ -3,7 +3,8 @@ const cors = require("cors");
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
 const http = require("http");
-const { Server } = require("socket.io");
+const { Server } = require("socket.io"); 
+const Sentry = require("@sentry/node");
 
 const taskRoutes = require("./routes/taskRoutes");
 const meetingRoutes = require("./routes/meetingRoutes");
@@ -15,8 +16,11 @@ const socketHandler = require("./sockets/socket");
 const scheduleRoutes = require("./routes/scheduleRoutes");
 
 dotenv.config();
-
-const app = express();
+Sentry.init({
+  dsn: process.env.SENTRY_DSN,
+  tracesSampleRate: 1.0,
+});
+const app = express(); 
 app.use(cors());
 app.use(express.json());
 
@@ -26,8 +30,9 @@ app.use("/api/meetings", meetingRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/notifications", notificationRoutes); 
-app.use("/api/schedule",scheduleRoutes);
+app.use("/api/schedule",scheduleRoutes); 
 
+app.use(Sentry.expressErrorHandler());
 // create HTTP server
 const server = http.createServer(app);
 
