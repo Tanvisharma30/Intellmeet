@@ -21,7 +21,13 @@ Sentry.init({
   tracesSampleRate: 1.0,
 });
 const app = express(); 
-app.use(cors());
+app.use(cors({ 
+  origin: "https://intellmeet-frontend-n9zu-b6gdhg9qt-tanvis136-6694s-projects.vercel.app", 
+  credentials: true,
+
+
+
+}));
 app.use(express.json());
 
 // routes
@@ -39,7 +45,8 @@ const server = http.createServer(app);
 // socket setup
 const io = new Server(server, {
   cors: {
-    origin: "*",
+    origin: "https://intellmeet-frontend-n9zu-b6gdhg9qt-tanvis136-6694s-projects.vercel.app", 
+    methods: ["GET", "POST"]
   },
 });
 
