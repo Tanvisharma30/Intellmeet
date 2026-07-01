@@ -1,13 +1,18 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom"; 
-import { io } from "socket.io-client";
+import { io } from "socket.io-client"; 
+
+import ScheduleMeetingModal from "../components/ScheduleMeetingModal";
 
 export default function Dashboard() {
   const navigate = useNavigate();
 
   const [meetings, setMeetings] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
-  const [openNotif, setOpenNotif] = useState(false);
+  const [openNotif, setOpenNotif] = useState(false); 
+
+  const [open, setOpen] = useState(false); 
+  const [scheduledMeetings, setScheduledMeetings] = useState<any[]>([]);
 
   const socket = useRef<any>(null);
 
@@ -23,11 +28,27 @@ export default function Dashboard() {
 
   // history 
   useEffect(() => {
-    fetch("http://localhost:5000/api/history/all")
-      .then((res) => res.json())
+    fetch("http://localhost:5000/api/history/all") 
+      .then(async (res) => { 
+        const data = await res.json();
+        return Array.isArray(data) ? data : []; 
+      })
       .then(setMeetings)
-      .catch(console.log);
+      .catch(() => setMeetings([]));
+  }, []); 
+
+  //upcoming meet
+  useEffect(() => { 
+    fetch("http://localhost:5000/api/meetings") 
+      .then(async (res) => { 
+        const data = await res.json();
+        return Array.isArray(data) ? data : []; 
+      })
+      .then(setScheduledMeetings)
+      .catch(() => setScheduledMeetings([]));
   }, []);
+
+
 
   // notifications
   useEffect(() => {
@@ -127,7 +148,13 @@ export default function Dashboard() {
 
         <button style={styles.secondaryBtn} onClick={joinMeeting}>
           Join Meeting
+        </button> 
+
+        <button  style={{ ...styles.primaryBtn, background: "#7c3aed" }} onClick={() => setOpen(true)}
+        >
+          📅 Schedule Meeting 
         </button>
+
       </div>
 
       {/* MAIN  */}
@@ -175,8 +202,60 @@ export default function Dashboard() {
               </div>
             </div>
           ))}
-        </div>
+        </div> 
+
+        <div style={styles.history}>
+          <h2>📅 Upcoming Meetings</h2> 
+          {scheduledMeetings.length === 0 && ( 
+            <p style={{ opacity: 0.6 }}>No upcoming meetings</p> 
+          )} 
+          {scheduledMeetings.map((m) => ( 
+            <div key={m._id} style={styles.historyCard}> 
+              <div  
+                style={{ 
+                  display: "flex",  
+                  justifyContent: "space-between",  
+                  alignItems: "center"  
+                }} 
+              > 
+
+                <b>{m.title || "Meeting"}</b>  
+                <span 
+                  style={{ 
+                    cursor: "pointer",
+                    color: "red",
+                    fontSize: "16px",
+                    marginLeft: "10px"
+                  }}  
+                  title="Cancel meeting"
+                  onClick={(e) => { 
+                    e.stopPropagation();
+                    setScheduledMeetings((prev) =>
+                      prev.filter((x) => x._id !== m._id)
+                    ); 
+                  }} 
+                >  
+                  ❌
+                </span> 
+              </div>
+              <div style={styles.summary}> 
+                📅 {new Date(m.date || m.createdAt).toLocaleString()} 
+              </div> 
+              <div style={styles.meta}>
+                Room: {m.roomId} 
+              </div> 
+            </div> 
+          ))}
+        </div> 
       </div>
+
+      <ScheduleMeetingModal 
+        open={open}
+        onClose={() => setOpen(false)}
+        onScheduled={(newMeeting) => { 
+          setScheduledMeetings((prev) => [newMeeting, ...prev]); 
+        }} 
+      />
     </div>
   );
 }

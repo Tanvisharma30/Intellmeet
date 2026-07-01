@@ -11,7 +11,8 @@ const authRoutes = require("./routes/authRoutes");
 const aiRoutes = require("./routes/aiRoutes");
 const notificationRoutes = require("./routes/notificationRoutes"); 
 // 🔥 IMPORT SOCKET FILE (IMPORTANT FIX)
-const socketHandler = require("./sockets/socket");
+const socketHandler = require("./sockets/socket"); 
+const scheduleRoutes = require("./routes/scheduleRoutes");
 
 dotenv.config();
 
@@ -24,7 +25,8 @@ app.use("/api/tasks", taskRoutes);
 app.use("/api/meetings", meetingRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/ai", aiRoutes);
-app.use("/api/notifications", notificationRoutes);
+app.use("/api/notifications", notificationRoutes); 
+app.use("/api/schedule",scheduleRoutes);
 
 // create HTTP server
 const server = http.createServer(app);
