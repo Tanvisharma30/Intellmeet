@@ -78,18 +78,24 @@ npm run dev
 Frontend
 cd frontend
 npm install
-npm run dev
-📸 Screenshots
+npm run dev 
 
-Add screenshots here.
+###📸 Screenshots
 
-🚀 Future Scope
+Add screenshots here. 
+
+
+
+###🚀 Future Scope
 WebRTC Video Calling
 AI Meeting Summary
 Google Calendar Integration
 Mobile Application
-Screen Sharing
-👩‍💻 Author
+Screen Sharing 
+
+
+
+### 👩‍💻 Author
 
 Tanvi Sharma
 
