@@ -14,7 +14,7 @@
 ## 🌐 Live Demo
 
 **Frontend:**  
-https://intellmeet-frontend-qo7iq80qg-tanvis136-6694s-projects.vercel.app/
+https://intellmeet-frontend-n9zu-90g8ijwhp-tanvis136-6694s-projects.vercel.app/
 
 **Backend API:**  
 https://intellmeet-backend-vgkg.onrender.com/
