@@ -66,24 +66,24 @@ AI Services (Transcription / Processing)
 
 The system follows a client-server architecture:
 
- Frontend Layer
+1. Frontend Layer
 Built using React + Vite
 Handles UI rendering, routing, and state management
 Communicates with backend using REST APIs and Socket.IO
- Backend Layer
+2. Backend Layer
 Node.js + Express server
 Handles authentication, meeting logic, tasks, and notifications
 Provides REST APIs for frontend consumption
- Database Layer
+3. Database Layer
 MongoDB stores:
 Users
 Meetings
 Tasks
 Notifications
-History logs
+4. History logs
  Real-Time Layer
 Socket.IO enables:
-Live participant updates
+5. Live participant updates
 Real-time messaging/events
 Meeting room synchronization
  AI Layer
@@ -109,15 +109,15 @@ Deployment (Vercel + Render)
 6. Installation & Setup
   Clone repository
 git clone https://github.com/your-username/intellmeet.git
-  Backend setup
+1. Backend setup
 cd backend
 npm install
 npm run dev
-  Frontend setup
+2. Frontend setup
 cd frontend
 npm install
 npm run dev
- Environment Variables
+3. Environment Variables
 Backend .env
 MONGO_URI=your_mongodb_uri
 JWT_SECRET=your_secret
