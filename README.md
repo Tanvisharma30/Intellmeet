@@ -1,6 +1,15 @@
 IntellMeet – AI-Powered Meeting & Collaboration Platform
 
-A real-time AI-assisted meeting and collaboration platform with transcription, task scheduling, notifications, and live communication built using the MERN stack.
+A real-time AI-assisted meeting and collaboration platform with transcription, task scheduling, notifications, and live communication built using the MERN stack. 
+
+![React](https://img.shields.io/badge/Frontend-React%20%2B%20Vite-61DAFB)
+![Express](https://img.shields.io/badge/Backend-Express.js-000000)
+![MongoDB](https://img.shields.io/badge/Database-MongoDB-47A248)
+![Socket.IO](https://img.shields.io/badge/Realtime-Socket.IO-010101)
+![JWT](https://img.shields.io/badge/Auth-JWT-orange)
+![AI](https://img.shields.io/badge/AI-Gemini-blueviolet)
+![Vercel](https://img.shields.io/badge/Deploy-Vercel-black)
+![Render](https://img.shields.io/badge/API-Render-7B42BC)
 
 🚀 Live Demo
 🌐 Frontend: https://intellmeet-frontend-qo7iq80qg-tanvis136-6694s-projects.vercel.app/
